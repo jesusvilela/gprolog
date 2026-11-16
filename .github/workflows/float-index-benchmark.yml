@@ -8,6 +8,7 @@ on:
       - 'src/EnginePl/**'
       - 'src/Wam2Ma/**'
       - 'tests/float_indexing/benchmark.py'
+      - 'tests/float_indexing/differential.py'
   workflow_dispatch:
 
 permissions:
@@ -49,6 +50,12 @@ jobs:
           python3 --version
           git -C baseline rev-parse HEAD
           git -C candidate rev-parse HEAD
+      - name: Adversarial native and consulted differential oracle
+        run: |
+          python3 candidate/tests/float_indexing/differential.py \
+            --baseline-bin "$PWD/baseline/bin" \
+            --candidate-bin "$PWD/candidate/bin" \
+            --output "$PWD/float-index-differential.json"
       - name: Matched source, compilation and runtime benchmark
         run: |
           python3 candidate/tests/float_indexing/benchmark.py \
@@ -63,6 +70,8 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: float-index-paired-observations
-          path: float-index-benchmark.json
+          path: |
+            float-index-benchmark.json
+            float-index-differential.json
           if-no-files-found: warn
           retention-days: 30
