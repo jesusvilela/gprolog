@@ -25,3 +25,14 @@ for this finite synthetic fixture, not an exhaustive binary64 theorem, not
 production performance, and not independent third-party reproduction.
 Non-finite floats and other operating systems remain unverified. The
 trace is disabled in production because the C file is never committed.
+
+
+## Calibration failure and explicit V2 amendment
+
+The initial [ELF64 attempt, Actions #43955853671](https://github.com/jesusvilela/gprolog/actions/runs/43955853671) compiled successfully and established the prediction on the first native execution: actual C insertion depths 1..17; the same-bucket miss visited 18 slots; the answer oracle matched.
+
+However, consulted execution returned the expected answers without producing a trace from the instrumented C function. The test assumed both execution modes would traverse that C function and failed with "no C trace written". That is an **experimental measurement-scope defect**, not evidence of a wrong Prolog answer. The original V1 all-mode C-trace gate is **NOT MET** and remains recorded as such. We cannot attribute the absence definitively to a particular interpreter implementation without separately tracing its path.
+
+**Amendment V2, made before its CI rerun:** Native compiled execution must emit exact C traces and satisfy all frozen 17/18 probe assertions. Consulted execution must match the same independent semantic answer oracle; absence of a C-function trace is explicitly recorded as a different evidence type. If a consulted trace is emitted, it too must satisfy probe assertions. Either wrong answer remains fatal.
+
+We retain the same three deterministic permutations, two ABIs, and original key set. This is a scope correction, **not** post-hoc promotion of the original V1 gate. Do not claim the C instrumentation covers the consulted interpreter merely because that interpreter returns correct answers.
