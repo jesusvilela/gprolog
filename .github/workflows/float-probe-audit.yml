@@ -1,0 +1,65 @@
+name: C float-switch probe audit (test-only)
+
+on:
+  push:
+    branches: ['audit/float-probe-depth']
+    paths:
+      - 'tests/float_indexing/probe_audit.py'
+      - '.github/workflows/float-probe-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        abi: [elf64, elf32]
+    steps:
+      - name: Checkout fork source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Install and verify multilib
+        if: matrix.abi == 'elf32'
+        run: |
+          sudo apt-get update -qq
+          sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y gcc-multilib libc6-dev-i386
+          printf 'int main(void){return 0;}\n' | gcc -m32 -x c - -o /tmp/gprolog-audit-elf32
+          readelf -h /tmp/gprolog-audit-elf32 | grep -E 'Class:.*ELF32'
+      - name: Instrument throwaway C source in runner
+        run: |
+          python3 tests/float_indexing/probe_audit.py instrument --source src/EnginePl/wam_inst.c
+          git status --short
+          grep 'FLOAT_PROBE phase=' src/EnginePl/wam_inst.c
+      - name: Build instrumented ELF64 runtime
+        if: matrix.abi == 'elf64'
+        working-directory: src
+        run: |
+          ./configure --with-install-dir=in-place
+          make
+          make install
+      - name: Build instrumented ELF32 runtime
+        if: matrix.abi == 'elf32'
+        working-directory: src
+        run: |
+          CC='gcc -m32' CFLAGS='-O3 -fomit-frame-pointer -m32' LDFLAGS='-m32' \
+            ./configure --host=i686-pc-linux-gnu --with-install-dir=in-place
+          make
+          make install
+      - name: Measure C slot visitation and validate independent answers
+        run: |
+          python3 tests/float_indexing/probe_audit.py verify \
+            --bin-dir "$PWD/bin" --output "$PWD/float-probe-${{ matrix.abi }}.json"
+      - name: Retain raw C probe traces
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: float-probe-${{ matrix.abi }}
+          path: float-probe-${{ matrix.abi }}.json
+          if-no-files-found: warn
+          retention-days: 30
