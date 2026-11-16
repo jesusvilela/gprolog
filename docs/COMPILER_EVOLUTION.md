@@ -153,3 +153,17 @@ real-workload and cross-platform review.
 ### Cross-ABI semantic witness — bounded
 
 [Adversarial x86-64 differential CI](https://github.com/jesusvilela/gprolog/actions/runs/43938946712) and [i686 ELF32 differential CI](https://github.com/jesusvilela/gprolog/actions/runs/43939319562) both passed three seeded 99-clause programs and 43 queries against a distinct Python source-order oracle, using historical baseline and new candidate compilers in native and consulted modes. The i686 toolchain check confirms both compiler binaries are actually ELF32. This is *not* independent OS/hardware or NaN/infinity evidence; see [scope and results](FLOAT_INDEX_BENCHMARK.md) for limitations.
+
+
+### Generation 5: near-saturated collision and wraparound oracle
+
+[ELF64 CI #43942693160](https://github.com/jesusvilela/gprolog/actions/runs/43942693160)
+and [i686 ELF32 CI #43942693018](https://github.com/jesusvilela/gprolog/actions/runs/43942693018)
+pass 17-key same-home-bucket collision tests with a 17/18 occupied
+float switch, a duplicate key and same-bucket absent lookups. The
+baseline/candidate native/consulted paths matched a separate
+source-order oracle for 3 permutations on each ABI (24 paths total).
+See [preregistered test scope and caveats](FLOAT_INDEX_COLLISION_PROTOCOL.md).
+The hash-model collision addresses were checked in the retained JSON,
+not measured as C runtime counters. No NaN, infinity, dynamic mutation,
+or independent external reproduction claims follow.

@@ -61,3 +61,48 @@ diagnosed rather than hidden by reducing collision density.
 not a NaN/infinity test, and not a test of big-endian, Windows LLP64,
 or concurrent/dynamic table modification. The recorded linear-probe depth
 is an analytic estimate from the source logic, not an instrumented counter.
+
+
+## Execution results — after preregistration, 16 November 2026
+
+**ELF64:** [CI run #43942693160](https://github.com/jesusvilela/gprolog/actions/runs/43942693160)
+**ELF32 / i686 multilib:** [CI run #43942693018](https://github.com/jesusvilela/gprolog/actions/runs/43942693018)
+
+Both runs **passed** the collision oracle. Inspection of the archived raw JSON shows:
+
+| Exact observable | ELF64 | ELF32 |
+|---|---:|---:|
+| Candidate and baseline binaries inspected | ELF64 | ELF32 |
+| Distinct keys in one candidate table | 17 | 17 |
+| Table capacity (`n+1`) | 18 | 18 |
+| Hash-model home bucket for every key | 17 | 17 |
+| Missing key also hashes to slot 17 | Yes | Yes |
+| Clauses per permutation | 18 (incl. duplicate) | 18 (incl. duplicate) |
+| Bound queries per permutation | 22 | 22 |
+| Source permutations | 3 | 3 |
+| Native/consulted × baseline/candidate paths | **12/12 passed** | **12/12 passed** |
+
+Sample collision keys: `30.125`, `-91.125`, `-208.125`,
+`-229.125`. These keys were selected by a deterministic fixture
+generator; they are not human-chosen proof cases. All 18 values (17 keys
+plus missing key) have modeled home slot 17 under **both** 32-bit and
+64-bit unsigned arithmetic. The code path is then exercised as a
+black-box by both compiled and consulted Prolog.
+
+**Verdict:** the narrow *finite-key collision-identity/termination/
+ordering* claim survives on the two tested Linux ABIs, under these
+three deterministic source permutations. The historical compiler
+gives the expected answers without the new float switch; the candidate
+emits the new switch and gives the same expected answers.
+
+The raw artifacts are GitHub Actions attachments:
+`float-index-paired-observations` (ID 14262879306) and
+`float-index-i686-oracle` (ID 14263891203). They have 30-day
+retention, while this protocol and hashes remain in version control.
+
+**Residual limits:** generated witness and oracle share a project
+author; the hash collision construction follows the same source
+algorithm rather than independent runtime instrumentation; actual
+lookup probe counts were not measured; no infinity/NaN, alternative
+float semantics, Windows LLP64, big-endian, or other CPU/OS evidence.
+A finite test set is not a proof of all floating-point hash cases.

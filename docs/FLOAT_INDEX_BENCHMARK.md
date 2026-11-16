@@ -116,3 +116,23 @@ The same run reran the float-uniform microbenchmark: **6.007x paired median spee
 This tests a distinct **32-bit ABI** where float words are split across the WAM representation, but it still runs under a Linux x86-64 GitHub host with a multilib userland. It is not independent 32-bit hardware reproduction, not a Windows or ARM compatibility result, and not a NaN/infinity certification. The underlying float table must continue to use full double keys rather than truncating to 32-bit words.
 
 Raw evidence is retained as GitHub Actions artifacts for both runs (30-day artifact retention), not copied into the committed source tree. The source generator, oracle, and compiler changes remain correlated project-authored evidence; external review is still a gate.
+
+
+## Deliberate collision/wraparound result
+
+See [collision preregistration and execution record](FLOAT_INDEX_COLLISION_PROTOCOL.md).
+On 16 November 2026, one deliberately near-full 18-slot float switch was
+subjected to 17 colliding distinct dyadic keys, a duplicate clause and
+a same-home-bucket missing key. The generated keys were proven to share
+the target home bucket **under the fixture's source-derived hash model**
+for both 32-bit and 64-bit unsigned words. The baseline and candidate
+both returned the expected source-order answers in native and consulted
+modes across three input permutations for each ABI (24 execution paths
+total). [ELF64 CI](https://github.com/jesusvilela/gprolog/actions/runs/43942693160);
+[ELF32 CI](https://github.com/jesusvilela/gprolog/actions/runs/43942693018).
+
+The ELF64 run also reran the preregistered synthetic \`float_uniform\`
+benchmark: **7.117x** median paired baseline/candidate runtime ratio.
+This is a **third** within-run figure, after 7.222x and 6.007x;
+it is not a pooled cross-host confidence interval. Collision-suite
+correctness is a logically separate test from this performance metric.
