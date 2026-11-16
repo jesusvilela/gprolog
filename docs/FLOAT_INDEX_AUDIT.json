@@ -61,13 +61,15 @@
       "Analytical expected total for every executed workload",
       "Float indexing 13 native and 13 consulted tests on PR2",
       "Independent Python source-order oracle compared against baseline and candidate in native/consulted modes across 3 x 99-clause / 43-query programs per ABI",
-      "Near-saturated collision oracle: 17 exact dyadic keys hashing to last home bucket in 18-slot table; missing colliding key, duplicate answer and full unbound enumeration"
+      "Near-saturated collision oracle: 17 exact dyadic keys hashing to last home bucket in 18-slot table; missing colliding key, duplicate answer and full unbound enumeration",
+      "Three native C probe-trace seeds per ABI paired with separate three-seed consulted source-order semantic controls"
     ],
     "structural": [
       "Inspect generated WAM for switch_on_term_flt and switch_on_float",
       "Inspect float-free WAM for historical switch_on_term",
       "readelf -h confirms baseline/candidate gplc and gprolog are ELF32 in i686 multilib workflow",
-      "Candidate generated exactly one 17-key switch_on_float table per collision program; ELF64 and ELF32 executable classes validated"
+      "Candidate generated exactly one 17-key switch_on_float table per collision program; ELF64 and ELF32 executable classes validated",
+      "Test-only runtime C logging records actual home slot, probe count and hit/miss for real native float-index lookup on ELF64 and ELF32"
     ],
     "property_based": [
       "Deterministically generated permuted keys; no broad property-based guarantee"
@@ -117,7 +119,9 @@
       "https://github.com/jesusvilela/gprolog/actions/runs/43938946712",
       "https://github.com/jesusvilela/gprolog/actions/runs/43939319562",
       "https://github.com/jesusvilela/gprolog/actions/runs/43942693160",
-      "https://github.com/jesusvilela/gprolog/actions/runs/43942693018"
+      "https://github.com/jesusvilela/gprolog/actions/runs/43942693018",
+      "https://github.com/jesusvilela/gprolog/actions/runs/43955853671",
+      "https://github.com/jesusvilela/gprolog/actions/runs/43956222956"
     ],
     "execution_records": [
       "GitHub Actions 43898849916 completed success; raw artifact 14241261189, retained 30 days",
@@ -128,7 +132,9 @@
       "Follow-up float_uniform synthetic benchmark: 6.007x paired median on second x86-64 runner, vs 7.222x initially; no cross-run CI",
       "ELF64 collision CI 43942693160, commit c7dea0b3; 17 distinct keys all modeled to home slot 17 of 18 under 32- and 64-bit arithmetic; 3 seeds, 12/12 semantic execution paths passed; raw artifact 14262879306",
       "ELF32 collision CI 43942693018, commit c7dea0b3; same exact 17 distinct float keys, 3 seeds, 12/12 native/consulted baseline/candidate execution paths passed; raw artifact 14263891203",
-      "Third float_uniform synthetic benchmark run 43942693160, paired median ratio 7.117x; previous 7.222x and 6.007x are not pooled"
+      "Third float_uniform synthetic benchmark run 43942693160, paired median ratio 7.117x; previous 7.222x and 6.007x are not pooled",
+      "Probe V1 Actions 43955853671: native ELF64/ELF32 C trace matched 1..17 inserts and 18-probe miss; original all-mode C trace gate failed because consulted path yielded no trace despite correct answers",
+      "Probe V2 Actions 43956222956 at a3af0c75: ELF64 and genuine i686 ELF32 native C traces matched 1..17 insertion and hit depths plus exact 18-probe missing-key lookup across three seeds each; 3/3 consulted semantic controls per ABI passed with no C trace observed"
     ],
     "independent_witnesses": [],
     "claim_to_artifact_map": [
@@ -137,7 +143,8 @@
       "WAM dispatch -> generated WAM inspection gates",
       "Resource cost -> compile timing, native file sizes, peak RSS records",
       "Finite literal cross-ABI behavior -> i686 ELF32 differential workflow artifact and logs",
-      "Near-full float hash collision and wraparound behavior -> tests/float_indexing/collision_oracle.py + ELF64 and ELF32 CI JSON artifacts"
+      "Near-full float hash collision and wraparound behavior -> tests/float_indexing/collision_oracle.py + ELF64 and ELF32 CI JSON artifacts",
+      "Actual native C probe depth -> tests/float_indexing/probe_audit.py, instrumented temporary runner source and raw workflow artifacts 14271662425 / 14269099971"
     ]
   },
   "round_trip": {
@@ -237,18 +244,35 @@
         "remainder": [
           "other architectures, non-finite floats and workloads"
         ]
+      },
+      {
+        "from": "C function source",
+        "to": "actual runtime trace",
+        "preserved": [
+          "compiled native C slot visitation"
+        ],
+        "transformed": [
+          "runtime-events to recorded probe depth and hit/miss"
+        ],
+        "lost": [
+          "consulted-mode C instrumentation (not observed)"
+        ],
+        "remainder": [
+          "different consulted execution path not traced"
+        ]
       }
     ]
   },
   "result": {
-    "observed": "Uniform float synthetic workload showed 7.222x median paired speedup; atom-only and variable controls approximately 1x; exact-oracle semantic differential passed on both x86-64 and multilib i686, including three source permutations and four execution modes per seed; collision oracle passed on ELF64 and ELF32 with 17 identical-home-slot keys, wraparound, colliding miss and duplicate clause, 3 source permutations and 12 compiler/execution paths per ABI",
+    "observed": "Uniform float synthetic workload showed 7.222x median paired speedup; atom-only and variable controls approximately 1x; exact-oracle semantic differential passed on both x86-64 and multilib i686, including three source permutations and four execution modes per seed; collision oracle passed on ELF64 and ELF32 with 17 identical-home-slot keys, wraparound, colliding miss and duplicate clause, 3 source permutations and 12 compiler/execution paths per ABI; V2 runtime probe audit directly measured 1..17 C insert/hit depths and 18-slot colliding miss on native ELF64/ELF32; consulted mode returned exact answers but emitted no C trace",
     "effect_size": "Paired median ratio 7.221948444; within-run percentile bootstrap [7.13286,7.27431]",
-    "uncertainty": "Seven paired timing samples per x86-64 run; first median speedup 7.222x and follow-up 6.007x. Bootstrap reflects within-run variation only, not cross-run or cross-machine reproducibility. Collision coverage is 3 deterministic source permutations and one adversarial 17/18 occupancy class per ABI, not a statistical exhaustive guarantee.",
+    "uncertainty": "Seven paired timing samples per x86-64 run; first median speedup 7.222x and follow-up 6.007x. Bootstrap reflects within-run variation only, not cross-run or cross-machine reproducibility. Collision coverage is 3 deterministic source permutations and one adversarial 17/18 occupancy class per ABI, not a statistical exhaustive guarantee. Native C probe depths are deterministic per fixture, but represent only 3 seeds on each ABI. Original all-modes C trace hypothesis failed.",
     "status_after": "M",
     "retired_claims": [
       "Early findall failure was a compiler defect (fixture binding error)",
       "Stale checked-in WAM compilation proves new dispatch",
-      "Any universal Prolog speedup inference from this synthetic suite"
+      "Any universal Prolog speedup inference from this synthetic suite",
+      "V1 assumption that consulted execution traverses the same instrumented C float switch: no consulted C trace observed in both ABIs; V1 gate not met"
     ],
     "active_remainder": [
       "Independent cross-platform replication",
@@ -257,7 +281,8 @@
       "NaN/infinity syntax/runtime semantics remain untested",
       "Independent physical 32-bit CPU, Windows and non-little-endian platforms remain untested",
       "Second x86-64 benchmark produced 6.007x; cross-run host variation unresolved",
-      "Full hash collision behavior remains tested, not proved for all finite doubles; runtime probe counters not instrumented"
+      "C native probes directly measured only on deterministic 17/18 collision suite; no universal finite-double theorem",
+      "Consulted path not instrumented; internal algorithm and probe count remain unmeasured"
     ]
   }
 }

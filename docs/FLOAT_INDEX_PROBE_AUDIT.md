@@ -36,3 +36,49 @@ However, consulted execution returned the expected answers without producing a t
 **Amendment V2, made before its CI rerun:** Native compiled execution must emit exact C traces and satisfy all frozen 17/18 probe assertions. Consulted execution must match the same independent semantic answer oracle; absence of a C-function trace is explicitly recorded as a different evidence type. If a consulted trace is emitted, it too must satisfy probe assertions. Either wrong answer remains fatal.
 
 We retain the same three deterministic permutations, two ABIs, and original key set. This is a scope correction, **not** post-hoc promotion of the original V1 gate. Do not claim the C instrumentation covers the consulted interpreter merely because that interpreter returns correct answers.
+
+
+## V2 observed results — 16 November 2026
+
+[Successful Actions run #43956222956](https://github.com/jesusvilela/gprolog/actions/runs/43956222956)
+executed the corrected protocol at commit a3af0c758b79667eb170c8b8e9e1ca7c39b7d9de.
+
+| Observable | Linux ELF64 | Linux ELF32 (i686 multilib) |
+|---|---:|---:|
+| Native semantic checks by seed | 3/3 | 3/3 |
+| Consulted semantic checks by seed | 3/3 | 3/3 |
+| Native C insertion keys | 17 per seed | 17 per seed |
+| Native measured insertion depths | 1..17 | 1..17 |
+| Native measured hit depths | 1..17 | 1..17 |
+| Native colliding missing-key depth | **18** | **18** |
+| Consulted C-function trace | Not observed | Not observed |
+
+All observations used the same dyadic float collision fixture and the
+project-authored, hash-independent source-order answer oracle. The raw
+hex-float keys and C lookup records are retained in 30-day workflow
+artifacts: float-probe-elf64 (ID 14271662425) and float-probe-elf32
+(ID 14269099971). No source file altered by the instrumentation script
+was committed; the normal master runtime remains bit-for-bit as before
+this experiment.
+
+**Claim ledger:** Original V1 requirement that both modes execute the
+instrumented C function was *retired / not met*. The narrower V2
+native C-level observation is *M / measured*, accompanied by a separate
+consulted semantic control. This does not certify the consulted-mode
+internal lookup algorithm, independent physical 32-bit hardware,
+unusual non-finite values, or all possible hash collisions.
+
+**Strongest surviving result:** at 17/18 occupancy on two Linux ABIs,
+the real native C lookup terminates after exactly 18 probes for a
+distinct key hashing to the same home bucket, and returns the expected
+complete answer lists for all tested hits. **Most damaging remaining
+obstruction:** correlated project-authored fixtures, no independent
+application workload or non-finite-value oracle.
+
+**Next bounded experiment:** inspect GNU Prolog's lexer/parser and
+arithmetic error paths for NaN and infinity independently of float
+indexing, then compare parsed/compiled/consulted behavior under a
+pre-registered accept/error/crash decision matrix. Any candidate-only
+crash or inconsistent semantic answer is a blocker. If both compilers
+reject a representation, record unsupported syntax instead of inventing
+a NaN-valued Prolog literal.
