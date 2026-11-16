@@ -24,7 +24,7 @@ jobs:
           # Stage 2: regenerate changed compiler modules with stage-1 pl2wam.
           # Git checkout gives source and generated WAM equal timestamps, so
           # relying on timestamps alone silently uses the old compiler.
-          touch Pl2Wam/first_arg.pl Pl2Wam/indexing.pl
+          touch Pl2Wam/first_arg.pl Pl2Wam/indexing.pl Pl2Wam/wam_emit.pl
           make
           make install
       - name: Goal expansion semantic regressions
