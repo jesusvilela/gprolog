@@ -25,54 +25,88 @@ cut_choice(1.5, first) :- !.
 cut_choice(1.5, second).
 cut_choice(2.5, other).
 
+:- dynamic(trace/1).
+
 side_effect(1.5, one) :- assertz(trace(one)).
 side_effect(1.5, two) :- assertz(trace(two)).
 side_effect(2.5, three) :- assertz(trace(three)).
 
+% Each case is a separate predicate: no variables leak between tests.
+% In particular the list returned by findall/3 must be fresh in every case.
+test_duplicate_float :-
+    findall(X, pick(1.5, X), L),
+    L == [first, second, wildcard].
+
+test_another_float :-
+    findall(X, pick(3.5, X), L),
+    L == [three, wildcard].
+
+test_float_absent_fallback :-
+    findall(X, pick(19.5, X), L),
+    L == [wildcard].
+
+test_signed_zero :-
+    findall(X, pick(-0.0, X), L),
+    L == [neg_zero, pos_zero, wildcard].
+
+test_signed_zero_reverse :-
+    findall(X, pick(0.0, X), L),
+    L == [neg_zero, pos_zero, wildcard].
+
+test_integer_fallback :-
+    findall(X, pick(2, X), L),
+    L == [integer, wildcard].
+
+test_atom_fallback :-
+    findall(X, pick(atom, X), L),
+    L == [atom, wildcard].
+
+test_list_fallback :-
+    findall(X, pick([x], X), L),
+    L == [list, wildcard].
+
+test_structure_fallback :-
+    findall(X, pick(f(x), X), L),
+    L == [structure, wildcard].
+
+test_interleaved_order :-
+    findall(X, interleaved(1.5, X), L),
+    L == [before, middle, after].
+
+test_cut :-
+    findall(X, cut_choice(1.5, X), L),
+    L == [first].
+
+test_side_effect_order :-
+    retractall(trace(_)),
+    findall(X, side_effect(1.5, X), L),
+    findall(T, trace(T), Traces),
+    L == [one, two],
+    Traces == [one, two].
+
+test_variable_call_order :-
+    findall(X, pick(X, first), L),
+    L == [1.5].
+
 check(Name, Goal) :-
-    (call(Goal) -> format('PASS ~w~n', [Name])
+    ( call(Goal) -> format('PASS ~w~n', [Name])
     ; format('FAIL ~w~n', [Name]), halt(1)
     ).
 
 main :-
-    (findall(X, pick(3.5, X), L0) ->
-        format('TRACE initial findall success: ~w~n', [L0])
-    ;   format('TRACE initial findall failure~n', [])
-    ),
-    flush_output,
-    check(duplicate_float,
-        (findall(X, pick(1.5, X), L),
-         L == [first, second, wildcard])),
-    check(another_float,
-        (format('TRACE before 3.5~n', []), flush_output, (pick(3.5, three) -> format('TRACE direct yes~n', []) ; format('TRACE direct no~n', [])), flush_output, (findall(X, pick(3.5, X), L) -> format('TRACE findall succeeds~n', []) ; (format('TRACE findall fails: L=~w~n', [L]), L = failed)), flush_output, format('TRACE float 3.5 answers=~w~n', [L]), flush_output, L == [three, wildcard])),
-    check(float_absent_fallback,
-        (findall(X, pick(19.5, X), L), L == [wildcard])),
-    check(signed_zero,
-        (findall(X, pick(-0.0, X), L),
-         L == [neg_zero, pos_zero, wildcard])),
-    check(signed_zero_reverse,
-        (findall(X, pick(0.0, X), L),
-         L == [neg_zero, pos_zero, wildcard])),
-    check(integer_fallback,
-        (findall(X, pick(2, X), L), L == [integer, wildcard])),
-    check(atom_fallback,
-        (findall(X, pick(atom, X), L), L == [atom, wildcard])),
-    check(list_fallback,
-        (findall(X, pick([x], X), L), L == [list, wildcard])),
-    check(structure_fallback,
-        (findall(X, pick(f(x), X), L), L == [structure, wildcard])),
-    check(interleaved_order,
-        (findall(X, interleaved(1.5, X), L),
-         L == [before, middle, after])),
-    check(cut,
-        (findall(X, cut_choice(1.5, X), L), L == [first])),
-    check(side_effect_order,
-        (retractall(trace(_)),
-         findall(X, side_effect(1.5, X), L),
-         findall(T, trace(T), Traces),
-         L == [one, two], Traces == [one, two])),
-    check(variable_call_order,
-        (findall(X, pick(X, first), L), L == [1.5])),
+    check(duplicate_float, test_duplicate_float),
+    check(another_float, test_another_float),
+    check(float_absent_fallback, test_float_absent_fallback),
+    check(signed_zero, test_signed_zero),
+    check(signed_zero_reverse, test_signed_zero_reverse),
+    check(integer_fallback, test_integer_fallback),
+    check(atom_fallback, test_atom_fallback),
+    check(list_fallback, test_list_fallback),
+    check(structure_fallback, test_structure_fallback),
+    check(interleaved_order, test_interleaved_order),
+    check(cut, test_cut),
+    check(side_effect_order, test_side_effect_order),
+    check(variable_call_order, test_variable_call_order),
     format('ALL 13 FLOAT INDEXING CHECKS PASSED~n', []),
     halt.
 
