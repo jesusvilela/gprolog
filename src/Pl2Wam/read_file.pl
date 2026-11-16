@@ -156,7 +156,8 @@ read_file_init :-
 	g_assign(in_lines, 0),
 	g_assign(in_bytes, 0),
 	g_assign(compiler_mode, default),
-	set_pred_flag(dyn, term_expansion, 2).
+	set_pred_flag(dyn, term_expansion, 2),
+	set_pred_flag(dyn, goal_expansion, 2).
 
 
 
@@ -514,7 +515,7 @@ get_next_clause2((:- D), Where, SingNames, Pred, N, SrcCl) :- % other directives
 	), !,
 	get_next_clause(Pred, N, SrcCl).
 
-get_next_clause2(Cl, Where, SingNames, Pred, N, Where + Cl) :-
+get_next_clause2(Cl, Where, SingNames, Pred, N, Where + Expanded) :-
 	(   Cl = (Head :- _) ->
 	    true
 	;   Cl = Head
@@ -526,11 +527,26 @@ get_next_clause2(Cl, Where, SingNames, Pred, N, Where + Cl) :-
 	check_predicate(Pred, N),
 	display_singletons(SingNames),
 	g_read(foreign_only, f),	    % fail if --foreign-only
-	embed_clause(Pred, N, Cl), !.    % fail if embed only (no compiled)
+	expand_clause_goals(Pred, N, Cl, Expanded),
+	embed_clause(Pred, N, Expanded), !.    % fail if embed only (no compiled)
+
 
 		% ignore clause with --foreign-only or if embed only
 get_next_clause2(_, _, _, Pred, N, SrcCl) :-
 	get_next_clause(Pred, N, SrcCl).
+
+
+% Hook definitions must be embedded before they can affect later clauses.
+% Preserve raw bodies of both hooks, including hooks inherited by consult.
+expand_clause_goals(Pred, 2, Cl, Cl) :-
+	( Pred == goal_expansion ; Pred == term_expansion ), !.
+expand_clause_goals(_, _, (Head :- Body), (Head :- Expanded)) :- !,
+	(   predicate_property(expand_goal(_, _), built_in),
+	    current_predicate(goal_expansion/2) ->
+	    expand_goal(Body, Expanded)
+	;   Expanded = Body       % bootstrap with an older GNU Prolog
+	).
+expand_clause_goals(_, _, Cl, Cl).
 
 
 
@@ -936,7 +952,8 @@ foreign_check_arg(term).
 
 embed_clause(Pred, N, Cl) :-
 	g_read(compiler_mode, CompMode),
-	(   CompMode = default, Pred = term_expansion, N = 2
+	(   CompMode = default, N = 2,
+	    (Pred = term_expansion ; Pred = goal_expansion)
 	;   CompMode = embed
 	;   CompMode = embed_compile
 	), !,

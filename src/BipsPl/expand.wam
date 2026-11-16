@@ -1,6 +1,6 @@
 % compiler: GNU Prolog 1.6.0
 % file: expand.pl
-% hash: 1d1d578bf15725097e04a3617d14591e01fbb687  expand.pl
+% hash: 3da002375a7f2efa529002ecca9776d8cf222d43 *expand.pl
 
 
 file_name('/home/diaz/GP/src/BipsPl/expand.pl').
@@ -79,18 +79,326 @@ predicate('$call_term_expansion'/2,65,static,private,monofile,built_in,[
     execute('$call'/4)]).
 
 
-predicate(phrase/2,75,static,private,monofile,built_in,[
+predicate(expand_goal/2,75,static,private,monofile,built_in,[
+    allocate(2),
+    get_variable(y(0),1),
+    put_nil(1),
+    put_variable(y(1),2),
+    call('$expand_goal'/3),
+    put_value(y(0),0),
+    get_value(y(1),0),
+    deallocate,
+    proceed]).
+
+
+predicate('$expand_goal'/3,79,static,private,monofile,built_in,[
+    get_variable(x(3),2),
+    get_variable(x(2),1),
+    put_value(x(3),1),
+    execute('$$expand_goal/3_$aux1'/3)]).
+
+
+predicate('$$expand_goal/3_$aux1'/3,79,static,private,monofile,local,[
+    pragma_arity(4),
+    get_current_choice(x(3)),
+    try_me_else(1),
+    call_c('Pl_Blt_Var',[fast_call,boolean],[x(0)]),
+    cut(x(3)),
+    get_value(x(0),1),
+    proceed,
+
+label(1),
+    retry_me_else(2),
+    allocate(3),
+    get_variable(y(0),0),
+    get_variable(y(1),1),
+    get_variable(y(2),3),
+    put_value(x(2),1),
+    put_value(y(0),0),
+    call('$expanded_goal_seen'/2),
+    cut(y(2)),
+    put_value(y(1),0),
+    get_value(y(0),0),
+    deallocate,
+    proceed,
+
+label(2),
+    retry_me_else(3),
+    allocate(5),
+    get_variable(y(0),0),
+    get_variable(y(1),1),
+    get_variable(y(2),2),
+    get_variable(y(3),3),
+    put_value(y(0),0),
+    put_variable(y(4),1),
+    call('$call_goal_expansion'/2),
+    put_value(y(0),0),
+    put_unsafe_value(y(4),1),
+    call_c('Pl_Blt_Term_Neq',[fast_call,boolean],[x(0),x(1)]),
+    cut(y(3)),
+    put_unsafe_value(y(4),0),
+    put_list(1),
+    unify_local_value(y(0)),
+    unify_local_value(y(2)),
+    put_value(y(1),2),
+    deallocate,
+    execute('$expand_goal'/3),
+
+label(3),
+    trust_me_else_fail,
+    get_variable(x(3),2),
+    get_variable(x(2),1),
+    put_value(x(3),1),
+    execute('$expand_goal_control'/3)]).
+
+
+predicate('$expanded_goal_seen'/2,89,static,private,monofile,built_in,[
+    pragma_arity(3),
+    get_current_choice(x(2)),
+    try_me_else(1),
+    get_list(1),
+    unify_variable(x(1)),
+    unify_void(1),
+    call_c('Pl_Blt_Term_Eq',[fast_call,boolean],[x(0),x(1)]),
+    cut(x(2)),
+    proceed,
+
+label(1),
+    trust_me_else_fail,
+    get_list(1),
+    unify_void(1),
+    unify_variable(x(1)),
+    execute('$expanded_goal_seen'/2)]).
+
+
+predicate('$call_goal_expansion'/2,94,static,private,monofile,built_in,[
+    pragma_arity(3),
+    get_current_choice(x(2)),
+    allocate(6),
+    get_variable(y(0),0),
+    get_variable(y(1),1),
+    get_variable(y(2),2),
+    put_structure((/)/2,0),
+    unify_atom(goal_expansion),
+    unify_integer(2),
+    call(current_predicate/1),
+    put_value(y(0),0),
+    put_variable(y(3),1),
+    call(term_variables/2),
+    call_c('Pl_Set_Bip_Name_Untagged_2',[],[expand_goal,2]),
+    put_structure(goal_expansion/2,0),
+    unify_local_value(y(0)),
+    unify_variable(y(4)),
+    put_atom('$call_goal_expansion',1),
+    put_integer(2,2),
+    put_atom(true,3),
+    call('$call'/4),
+    cut(y(2)),
+    put_value(y(0),0),
+    put_variable(y(5),1),
+    call(term_variables/2),
+    put_unsafe_value(y(3),0),
+    put_unsafe_value(y(5),1),
+    put_value(y(1),2),
+    put_value(y(4),3),
+    put_value(y(0),4),
+    deallocate,
+    execute('$$call_goal_expansion/2_$aux1'/5)]).
+
+
+predicate('$$call_goal_expansion/2_$aux1'/5,94,static,private,monofile,local,[
+    pragma_arity(6),
+    get_current_choice(x(5)),
+    try_me_else(1),
+    call_c('Pl_Blt_Term_Eq',[fast_call,boolean],[x(0),x(1)]),
+    cut(x(5)),
+    get_value(x(3),2),
+    proceed,
+
+label(1),
+    trust_me_else_fail,
+    put_structure(permission_error/3,1),
+    unify_atom(modify),
+    unify_atom(goal_expansion_input),
+    unify_local_value(x(4)),
+    put_structure(error/2,0),
+    unify_value(x(1)),
+    unify_structure((/)/2),
+    unify_atom(expand_goal),
+    unify_integer(2),
+    put_atom('$call_goal_expansion',1),
+    put_integer(2,2),
+    put_atom(true,3),
+    execute('$throw'/4)]).
+
+
+predicate('$expand_goal_control'/3,105,static,private,monofile,built_in,[
+    pragma_arity(4),
+    get_current_choice(x(3)),
+    try_me_else(18),
+    switch_on_term(2,fail,fail,fail,1),
+
+label(1),
+    switch_on_structure([((',')/2,3),((;)/2,5),((->)/2,7),((*->)/2,9),((\+)/1,11),(call/1,13),(once/1,15),(catch/3,17)]),
+
+label(2),
+    try_me_else(4),
+
+label(3),
+    allocate(3),
+    get_variable(y(1),1),
+    get_structure((',')/2,0),
+    unify_variable(x(0)),
+    unify_variable(y(0)),
+    get_structure((',')/2,2),
+    unify_variable(x(2)),
+    unify_variable(y(2)),
+    cut(x(3)),
+    put_value(y(1),1),
+    call('$expand_goal'/3),
+    put_value(y(0),0),
+    put_value(y(1),1),
+    put_value(y(2),2),
+    deallocate,
+    execute('$expand_goal'/3),
+
+label(4),
+    retry_me_else(6),
+
+label(5),
+    allocate(3),
+    get_variable(y(1),1),
+    get_structure((;)/2,0),
+    unify_variable(x(0)),
+    unify_variable(y(0)),
+    get_structure((;)/2,2),
+    unify_variable(x(2)),
+    unify_variable(y(2)),
+    cut(x(3)),
+    put_value(y(1),1),
+    call('$expand_goal'/3),
+    put_value(y(0),0),
+    put_value(y(1),1),
+    put_value(y(2),2),
+    deallocate,
+    execute('$expand_goal'/3),
+
+label(6),
+    retry_me_else(8),
+
+label(7),
+    allocate(3),
+    get_variable(y(1),1),
+    get_structure((->)/2,0),
+    unify_variable(x(0)),
+    unify_variable(y(0)),
+    get_structure((->)/2,2),
+    unify_variable(x(2)),
+    unify_variable(y(2)),
+    cut(x(3)),
+    put_value(y(1),1),
+    call('$expand_goal'/3),
+    put_value(y(0),0),
+    put_value(y(1),1),
+    put_value(y(2),2),
+    deallocate,
+    execute('$expand_goal'/3),
+
+label(8),
+    retry_me_else(10),
+
+label(9),
+    allocate(3),
+    get_variable(y(1),1),
+    get_structure((*->)/2,0),
+    unify_variable(x(0)),
+    unify_variable(y(0)),
+    get_structure((*->)/2,2),
+    unify_variable(x(2)),
+    unify_variable(y(2)),
+    cut(x(3)),
+    put_value(y(1),1),
+    call('$expand_goal'/3),
+    put_value(y(0),0),
+    put_value(y(1),1),
+    put_value(y(2),2),
+    deallocate,
+    execute('$expand_goal'/3),
+
+label(10),
+    retry_me_else(12),
+
+label(11),
+    get_structure((\+)/1,0),
+    unify_variable(x(0)),
+    get_structure((\+)/1,2),
+    unify_variable(x(2)),
+    cut(x(3)),
+    execute('$expand_goal'/3),
+
+label(12),
+    retry_me_else(14),
+
+label(13),
+    get_structure(call/1,0),
+    unify_variable(x(0)),
+    get_structure(call/1,2),
+    unify_variable(x(2)),
+    cut(x(3)),
+    execute('$expand_goal'/3),
+
+label(14),
+    retry_me_else(16),
+
+label(15),
+    get_structure(once/1,0),
+    unify_variable(x(0)),
+    get_structure(once/1,2),
+    unify_variable(x(2)),
+    cut(x(3)),
+    execute('$expand_goal'/3),
+
+label(16),
+    trust_me_else_fail,
+
+label(17),
+    allocate(3),
+    get_variable(y(1),1),
+    get_structure(catch/3,0),
+    unify_variable(x(0)),
+    unify_variable(x(1)),
+    unify_variable(y(0)),
+    get_structure(catch/3,2),
+    unify_variable(x(2)),
+    unify_value(x(1)),
+    unify_variable(y(2)),
+    cut(x(3)),
+    put_value(y(1),1),
+    call('$expand_goal'/3),
+    put_value(y(0),0),
+    put_value(y(1),1),
+    put_value(y(2),2),
+    deallocate,
+    execute('$expand_goal'/3),
+
+label(18),
+    trust_me_else_fail,
+    get_value(x(2),0),
+    proceed]).
+
+
+predicate(phrase/2,133,static,private,monofile,built_in,[
     put_nil(2),
     put_integer(2,3),
     execute('$phrase'/4)]).
 
 
-predicate(phrase/3,83,static,private,monofile,built_in,[
+predicate(phrase/3,141,static,private,monofile,built_in,[
     put_integer(3,3),
     execute('$phrase'/4)]).
 
 
-predicate('$phrase'/4,89,static,private,monofile,built_in,[
+predicate('$phrase'/4,147,static,private,monofile,built_in,[
     allocate(7),
     get_variable(y(0),0),
     get_variable(y(1),1),
@@ -124,7 +432,7 @@ predicate('$phrase'/4,89,static,private,monofile,built_in,[
     execute('$call'/4)]).
 
 
-predicate('$$phrase/4_$aux1'/1,89,static,private,monofile,local,[
+predicate('$$phrase/4_$aux1'/1,147,static,private,monofile,local,[
     pragma_arity(2),
     get_current_choice(x(1)),
     try_me_else(1),
@@ -137,17 +445,17 @@ label(1),
     proceed]).
 
 
-predicate('$dcg_trans_rule'/2,109,static,private,monofile,built_in,[
+predicate('$dcg_trans_rule'/2,167,static,private,monofile,built_in,[
     call_c('Pl_Dcg_Trans_Rule_2',[boolean],[x(0),x(1)]),
     proceed]).
 
 
-predicate('$dcg_trans_body'/4,115,static,private,monofile,built_in,[
+predicate('$dcg_trans_body'/4,173,static,private,monofile,built_in,[
     call_c('Pl_Dcg_Trans_Body_4',[boolean],[x(0),x(1),x(2),x(3)]),
     proceed]).
 
 
-predicate('$$prop_meta_pred/3_$aux1'/3,73,static,private,monofile,local,[
+predicate('$$prop_meta_pred/3_$aux1'/3,131,static,private,monofile,local,[
     get_atom(phrase,0),
     get_integer(2,1),
     get_structure(phrase/2,2),
@@ -156,7 +464,7 @@ predicate('$$prop_meta_pred/3_$aux1'/3,73,static,private,monofile,local,[
     proceed]).
 
 
-predicate('$$prop_meta_pred/3_$aux2'/3,81,static,private,monofile,local,[
+predicate('$$prop_meta_pred/3_$aux2'/3,139,static,private,monofile,local,[
     get_atom(phrase,0),
     get_integer(3,1),
     get_structure(phrase/3,2),
@@ -166,7 +474,7 @@ predicate('$$prop_meta_pred/3_$aux2'/3,81,static,private,monofile,local,[
     proceed]).
 
 
-predicate('$prop_meta_pred'/3,73,static,private,multifile,local,[
+predicate('$prop_meta_pred'/3,131,static,private,multifile,local,[
     get_variable(x(3),0),
     put_structure('$prop_meta_pred'/3,0),
     unify_local_value(x(3)),
@@ -178,7 +486,7 @@ predicate('$prop_meta_pred'/3,73,static,private,multifile,local,[
     execute('$call'/4)]).
 
 
-directive(73,system,[
+directive(131,system,[
     call_c('Pl_Emit_BC_Execute_Wrapper',[],['$prop_meta_pred',3,&('$$prop_meta_pred/3_$aux1'/3)]),
     put_structure('$prop_meta_pred'/3,0),
     unify_atom(phrase),
@@ -190,7 +498,7 @@ directive(73,system,[
     execute('$add_clause_term'/2)]).
 
 
-directive(81,system,[
+directive(139,system,[
     call_c('Pl_Emit_BC_Execute_Wrapper',[],['$prop_meta_pred',3,&('$$prop_meta_pred/3_$aux2'/3)]),
     put_structure('$prop_meta_pred'/3,0),
     unify_atom(phrase),

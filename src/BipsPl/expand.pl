@@ -68,6 +68,64 @@ expand_term(T1, T3) :-
 	call(term_expansion(T1, T2)).
 
 
+% Expand literal goals without descending into ordinary predicate arguments.
+% Ancestors prevent re-expanding a wrapped goal and finite rewrite cycles.
+% Keep the public output separate so a prebound output cannot select a hook.
+
+expand_goal(Goal, Expanded) :-
+	'$expand_goal'(Goal, [], Result),
+	Expanded = Result.
+
+'$expand_goal'(Goal, Seen, Expanded) :-
+	(   var(Goal) ->
+	    Expanded = Goal
+	;   '$expanded_goal_seen'(Goal, Seen) ->
+	    Expanded = Goal
+	;   '$call_goal_expansion'(Goal, Next), Goal \== Next ->
+	    '$expand_goal'(Next, [Goal|Seen], Expanded)
+	;   '$expand_goal_control'(Goal, Seen, Expanded)
+	).
+
+'$expanded_goal_seen'(Goal, [Previous|_]) :-
+	Goal == Previous, !.
+'$expanded_goal_seen'(Goal, [_|Seen]) :-
+	'$expanded_goal_seen'(Goal, Seen).
+
+'$call_goal_expansion'(Goal, Expanded) :-
+	current_predicate(goal_expansion/2),
+	term_variables(Goal, Before),
+	set_bip_name(expand_goal, 2),
+	call(goal_expansion(Goal, Result)), !,
+	term_variables(Goal, After),
+	(   Before == After ->
+	    Expanded = Result
+	;   throw(error(permission_error(modify, goal_expansion_input, Goal), expand_goal/2))
+	).
+
+'$expand_goal_control'((A, B), Seen, (X, Y)) :- !,
+	'$expand_goal'(A, Seen, X),
+	'$expand_goal'(B, Seen, Y).
+'$expand_goal_control'((A; B), Seen, (X; Y)) :- !,
+	'$expand_goal'(A, Seen, X),
+	'$expand_goal'(B, Seen, Y).
+'$expand_goal_control'((A -> B), Seen, (X -> Y)) :- !,
+	'$expand_goal'(A, Seen, X),
+	'$expand_goal'(B, Seen, Y).
+'$expand_goal_control'((A *-> B), Seen, (X *-> Y)) :- !,
+	'$expand_goal'(A, Seen, X),
+	'$expand_goal'(B, Seen, Y).
+'$expand_goal_control'(\+ A, Seen, \+ X) :- !,
+	'$expand_goal'(A, Seen, X).
+'$expand_goal_control'(call(A), Seen, call(X)) :- !,
+	'$expand_goal'(A, Seen, X).
+'$expand_goal_control'(once(A), Seen, once(X)) :- !,
+	'$expand_goal'(A, Seen, X).
+'$expand_goal_control'(catch(A, Ball, B), Seen, catch(X, Ball, Y)) :- !,
+	'$expand_goal'(A, Seen, X),
+	'$expand_goal'(B, Seen, Y).
+'$expand_goal_control'(Goal, _, Goal).
+
+
 
 
 :- meta_predicate(phrase(2, ?)).

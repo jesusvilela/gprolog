@@ -1,0 +1,34 @@
+name: Compiler checks
+
+on:
+  push:
+    branches: [master, 'feature/**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-and-consulted:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Build and install in place
+        working-directory: src
+        run: |
+          ./configure --with-install-dir=in-place
+          make
+          make install
+      - name: Goal expansion semantic regressions
+        run: python3 tests/goal_expansion/run.py --bin-dir "$PWD/bin"
+      - name: Native bootstrap and backend checks
+        working-directory: src
+        run: make check
+      - name: Emulated bootstrap
+        working-directory: src
+        run: make check-e
+      - name: Interpreted bootstrap
+        working-directory: src
+        run: make check-i
