@@ -1,178 +1,189 @@
-# GNU Prolog, still becoming
+<div align="center">
 
-> A native Prolog compiler with an old soul, a real WAM, and unfinished business.
+![gprolog — original Wabi-Futurist illustration of Prolog search and backtracking](assets/gprolog-wabi-futurism.svg)
 
-This fork starts from [GNU Prolog](https://www.gprolog.org/), Daniel Diaz's
-native-code Prolog system, and asks a precise question:
+<sub>侘未来 / WABI-FUTURISM · LOGIC / NATIVE CODE / CONSTRAINTS</sub>
 
-**What should a serious Prolog compiler feel like at the edge of 2027?**
+# gprolog
 
-Not a rewrite for the pleasure of rewriting. Not a compatibility costume.
-We keep the machinery that already matters—native standalone executables,
-fast startup, a compact runtime, ISO-oriented semantics, finite-domain
-constraints, and the Prolog/C boundary—then bring in the best *ideas* proven
-across the wider logic-programming ecosystem.
+### the quiet logic.
 
-The direction is evolutionary:
+*A small query. A whole search space.*
 
-```text
-GNU Prolog's native spine
-        + better compilation hooks
-        + stronger indexing
-        + explicit contracts and analysis
-        + incremental development
-        + selective tabling
-        = a modern compiler that remains recognizably Prolog
+**Old soul. Native spine. New questions. Exact answers.**
+
+</div>
+
+---
+
+## 00 / Inheritance is part of the program
+
+**GNU Prolog** is the native-code Prolog compiler and finite-domain constraint system developed by **Daniel Diaz**. Its compact compiled executables, ISO-oriented semantics, Warren Abstract Machine (WAM) pipeline and Prolog/C interface are the point of departure here—not legacy baggage to be discarded.
+
+This repository is **a personal fork of GNU Prolog**, not a separate implementation or an official replacement for upstream. Its `master` branch retains the **GNU Prolog 1.6.0** base ([VERSION](VERSION), [NEWS](NEWS)) and now includes a narrowly scoped, experimental goal-expansion extension. Float first-argument indexing is being evaluated separately in [draft PR #2](https://github.com/jesusvilela/gprolog/pull/2), **not presented here as a shipped upstream feature**.
+
+The original GNU Prolog [README](README) remains preserved, alongside a [verbatim archive](docs/UPSTREAM_README_1.6.0.txt). The upstream project's language, history, and licensing stay visible even as this fork's landing page evolves.
+
+> **Change the compiler carefully. Keep the language recognizable.**
+
+No invented benchmarks. No new semantics by renaming an old mechanism. No compatibility claim without executable evidence.
+
+## 01 / One question, many paths
+
+A small Prolog program is enough to remember what makes this language different:
+
+```prolog
+parent(ada, noah).
+parent(noah, mei).
+
+ancestor(X, Y) :- parent(X, Y).
+ancestor(X, Y) :- parent(X, Z), ancestor(Z, Y).
 ```
 
-No benchmark theater. No borrowed feature names without semantics. Every step
-must arrive as a small vertical slice with executable evidence.
+Ask:
 
-## What already lives here
+```prolog
+?- ancestor(ada, mei).
+```
 
-GNU Prolog provides:
+The query can succeed through the recursive rule. The hero illustration is an **original, schematic proof-search tree**: a failed direct-parent attempt and a successful recursive path, not a captured debugger trace.
 
-- native-code compilation to standalone executables;
-- an interactive byte-code interpreter and debugger;
-- a low-level WAM debugger;
-- ISO Prolog coverage for arithmetic, streams, dynamic code, and exceptions;
-- clause indexing, DCGs, sockets, operating-system integration, and global
-  variables;
-- more than 300 built-in predicates;
-- a bidirectional C interface;
-- an integrated finite-domain constraint solver with reification, symbolic and
-  arithmetic constraints, and multiple enumeration heuristics.
+A Prolog query is not only a computation. It is a request to search the consequences of clauses, bindings and procedural control. That means optimizations must preserve more than an attractive final answer: **solution order, variable bindings, cut, exceptions and side effects** can all matter.
 
-The compiler accepts Prolog, WAM, C, and object inputs. It removes many unused
-built-ins while linking standalone programs, keeping the result closer to a
-compiled language artifact than a bundled interactive image.
+## 02 / The native spine
 
-## The first new compiler seam: goal expansion
+GNU Prolog is already a compiler. We are not proposing a JIT merely to make the project sound modern.
 
-This branch introduces SWI-inspired `goal_expansion/2` hooks and the explicit
-`expand_goal/2` predicate, adapted to GNU Prolog rather than imitating another
-system wholesale.
+```mermaid
+flowchart LR
+    A["Prolog source"] --> B["Pl2Wam"]
+    B --> C["WAM representation"]
+    C --> D["Wam2Ma"]
+    D --> E["Ma2Asm"]
+    E --> F["Assembly + linking"]
+    F --> G["Native executable"]
+    H["Runtime · built-ins · FD solver"] --> G
+```
+
+This is a **high-level orientation**, not a complete account of every supported input, intermediate representation or link-time step. The actual compiler components live in [`src/Pl2Wam/`](src/Pl2Wam/), [`src/Wam2Ma/`](src/Wam2Ma/) and [`src/Ma2Asm/`](src/Ma2Asm/).
+
+The established GNU Prolog system includes native standalone compilation, an interactive top-level, debugging facilities, clause indexing, DCGs, a bidirectional C interface and an integrated finite-domain constraint solver. For complete scope and language semantics, consult the [upstream manual](doc/README).
+
+## 03 / A guarded mutation
+
+<sub>IN THIS FORK'S `master` · EXPERIMENTAL · NOT AN UPSTREAM GNU PROLOG FEATURE</sub>
+
+**[Merged PR #1 — guarded goal expansion](https://github.com/jesusvilela/gprolog/pull/1)** introduces optional `goal_expansion/2` compilation hooks and the explicit `expand_goal/2` predicate. The intention is precise: specialize selected calls *before* WAM/native compilation without replacing GNU Prolog's compiler.
 
 ```prolog
 goal_expansion(square(X, Y), Y is X * X).
 
-area_of_square(Side, Area) :-
-    square(Side, Area).
+area_of_square(Side, Area) :- square(Side, Area).
 ```
 
-During compilation, the body of `area_of_square/2` is specialized to native
-arithmetic. Expansion traverses control constructs such as conjunction,
-disjunction, conditionals, negation, `call/1`, `once/1`, and `catch/3`, while
-ordinary data arguments remain data.
+The implementation traverses documented control constructs rather than arbitrary data arguments, rejects hooks that bind or alias source-goal variables, and detects finite rewrite cycles. Hook definitions are protected from self-expansion; consulted code can inherit active hooks.
 
-The safety boundary is deliberate:
+**Evidence:** 29/29 semantic checks in each of native and consulted execution, an expected rejection of unsafe rewrites, and native/emulated/interpreted bootstrap checks on the reviewed commit. These checks establish the tested subset; they are **not** full SWI-Prolog compatibility, a guarantee against infinite distinct rewrites, or a measured performance gain.
 
-- the first successful hook wins;
-- source-goal variables may not be bound or aliased by a hook;
-- finite rewrite cycles are detected;
-- hook definitions are protected from self-expansion;
-- consulted code inherits the active expansion hooks;
-- this is a documented, tested subset—not a claim of full SWI compatibility.
+See [the exact scope and tests](docs/COMPILER_EVOLUTION.md). **Upstream GNU Prolog does not thereby acquire this feature.**
 
-See [the compiler evolution notes](docs/COMPILER_EVOLUTION.md) for the exact
-semantics, exclusions, and evidence.
+## 04 / The float-shaped question
 
-## Smallest successful path
+<sub>DRAFT / UNDER REVIEW · [`feature/float-indexing`](https://github.com/jesusvilela/gprolog/tree/feature/float-indexing) · NOT YET ON `master`</sub>
 
-After installing GNU Prolog and making sure its binaries are on `PATH`:
+**[PR #2 — static first-argument float indexing](https://github.com/jesusvilela/gprolog/pull/2)** extends, rather than replaces, GNU Prolog's WAM clause indexing. Where static float-headed clauses occur, the experimental branch emits `switch_on_term_flt/6` and `switch_on_float/1` backed by full `double` keys. Float-free groups retain the historical `switch_on_term/5` path.
+
+```mermaid
+flowchart LR
+    A["Static predicate heads"] --> B{"Float heads?"}
+    B -->|No| C["Historical switch_on_term/5"]
+    B -->|Yes| D["Float-aware WAM dispatch"]
+    D --> E["Full-double-key switch table"]
+    C --> F["Original clause semantics"]
+    E --> F
+```
+
+The provisional implementation has passed 13 semantic checks per native/consulted path; targeted finite-float differential tests on Linux ELF64 and i686 ELF32; and deliberate near-full hash-collision tests (17 distinct keys sharing one starting bucket in an 18-slot table), including missing lookups and source-order duplicate answers. All results are **bounded to their fixtures**.
+
+**Performance, carefully scoped:** three matched CI runs found approximately **6.01×–7.22×** native speedups for a synthetic 128-key float-heavy workload. Atom-only and variable-call controls were approximately unchanged. This is *not* a general GNU Prolog speedup, nor independent replication. NaN/infinity behavior, additional ABIs, and real-world workloads remain open.
+
+Read the [benchmark protocol](https://github.com/jesusvilela/gprolog/blob/feature/float-indexing/docs/FLOAT_INDEX_BENCHMARK.md), [collision experiment](https://github.com/jesusvilela/gprolog/blob/feature/float-indexing/docs/FLOAT_INDEX_COLLISION_PROTOCOL.md), and [evidence ledger](https://github.com/jesusvilela/gprolog/blob/feature/float-indexing/docs/FLOAT_INDEX_AUDIT.json). **PR #2 remains draft and unmerged while those limits are evaluated.**
+
+### Elsewhere in the search space
+
+The following are research directions, not features of this fork's `master`:
+
+| Direction | Reference ecosystems | Evidence needed before implementation |
+| :-- | :-- | :-- |
+| Wider and multi-argument indexing | SWI-Prolog, YAP | Source-order and backtracking preservation on representative applications |
+| Assertions and modes | Ciao/CiaoPP | Explicit contracts and rejected unsafe assumptions |
+| Incremental compilation | Modern iterative compiler workflows | Dependency correctness and compile-time measurements |
+| Selective tabling | XSB | Precise recursion, negation, answer and memory semantics |
+| Cleaner embedding | Trealla, Scryer, Clausal | Foreign resource ownership and backtracking-safe interfaces |
+
+These projects inform design; they are **not an implied code source**. Any contribution must respect licensing, document a bounded contract, and bring reproducible evidence.
+
+## 05 / Enter the machine
+
+For an existing GNU Prolog installation with its executables on `PATH`:
 
 ```console
 $ gprolog
 | ?- write('hello from Prolog'), nl.
-hello from Prolog
-yes
 ```
 
-Compile a program:
+The standalone compiler is `gplc`. To compile an actual Prolog program stored in `hello.pl`:
 
 ```console
 $ gplc hello.pl
-$ ./hello
 ```
 
-`gplc --help` shows the accepted inputs and compiler options. The full build
-instructions live in [INSTALL](INSTALL); Windows-specific compiler notes are in
-[src/WINDOWS](src/WINDOWS).
+To build from the source tree on a supported Unix-like environment:
 
-## Build from source
-
-On a Unix-like system, the canonical in-place build is:
-
-```console
-$ cd src
-$ ./configure --with-install-dir=in-place
-$ make
-$ make install
+```sh
+cd src
+./configure --with-install-dir=in-place
+make
+make install
+make check
+make check-e
+make check-i
+python3 ../tests/goal_expansion/run.py --bin-dir "$PWD/../bin"
 ```
 
-Validate the compiler and the new expansion seam:
+Consult [INSTALL](INSTALL), [src/WINDOWS](src/WINDOWS), [PROBLEMS](PROBLEMS) and the [manual](doc/README) for the exact platform, toolchain, execution and troubleshooting requirements. The guarded goal-expansion tests now apply to this fork's `master`. The additional float-indexing checks live on [PR #2's branch](https://github.com/jesusvilela/gprolog/pull/2) until that change is separately accepted.
 
-```console
-$ python3 ../tests/goal_expansion/run.py --bin-dir "$PWD/../bin"
-$ make check
-$ make check-e
-$ make check-i
-```
+## 06 / An evidence ledger, not a leaderboard
 
-Those commands cover native, emulated, and interpreted compiler modes. A green
-run establishes the behavior exercised by those suites; it is not, by itself,
-a universal performance or compatibility claim.
+Every compiler change should answer the same questions: *What is changed? What is preserved? Where can it fail? What evidence would make us withdraw the claim?*
 
-On Windows, read [src/WINDOWS](src/WINDOWS) before building. The MSVC and MSYS
-ports have different toolchain requirements, and a source path containing
-spaces can break the MSYS build.
+- **Semantics before speed:** check substitutions, success/failure, answer order, cut, exceptions, side effects and dynamic predicates as applicable.
+- **Native and interpreted paths:** compare the execution modes that the implementation actually touches.
+- **Adversarial tests:** an invalid rewrite or a malformed goal must fail for the correct reason.
+- **Reproducibility:** record toolchain, platform, exact commit and commands.
+- **Attribution:** distinguish GNU Prolog's established features from this fork's additions and from other Prolog implementations' ideas.
+- **Scientific humility:** a passing test suite validates its tested contract, not universal ISO conformance or a performance advantage.
 
-## Where this compiler goes next
+The merged goal-expansion CI and the draft float-indexing CI are separately traceable from their linked PRs. The float measurements were produced by matched GitHub Actions runs with an independently authored *source-order model*, not an independent third-party laboratory. **A green CI suite is a tested scope, not a proof of universal semantics.**
 
-The research map is intentionally plural:
+## 07 / Provenance never gets optimized away
 
-- **SWI-Prolog and YAP:** deeper, observable indexing without disturbing answer
-  order or side effects;
-- **Ciao:** assertions, modes, and analysis that can become compiler knowledge;
-- **WAMpy and modern incremental systems:** shorter edit–compile–inspect loops;
-- **XSB:** selective tabling with explicit semantic and memory boundaries;
-- **Trealla, Scryer, and Clausal:** smaller embeddings and cleaner host-language
-  interfaces.
+**GNU Prolog was developed by Daniel Diaz.** Its upstream development and bug tracker are at [didoudiaz/gprolog](https://github.com/didoudiaz/gprolog). The project site is [gprolog.org](https://www.gprolog.org/).
 
-These are design sources, not code-mining targets. Features enter this fork
-only when their semantics fit GNU Prolog, their licensing is compatible, and
-their behavior can be reconstructed from tests.
+Since version 1.4.0, the GNU Prolog distribution has been available under a dual-license choice: **LGPL version 3 or later**, or **GPL version 2 or later**, or both in parallel, subject to the applicable notices and conditions. See [COPYING](COPYING) for the actual terms. This fork does not claim a new license over upstream code.
 
-## Documentation and conversation
-
-- The manual is under [`doc/`](doc/README).
-- Upstream development and bug tracking live at
-  [didoudiaz/gprolog](https://github.com/didoudiaz/gprolog/issues).
-- The traditional user list is `users-prolog@gnu.org`.
-- Historical bug mail may still be sent to `bug-prolog@gnu.org`.
-
-This fork is an experiment in compiler evolution, but its ancestry is not
-ambiguous. If you report a problem, please say whether it reproduces in
-upstream GNU Prolog or only after one of this fork's additions.
-
-## License and provenance
-
-GNU Prolog was developed by Daniel Diaz. This repository is a fork of the
-upstream GNU Prolog project and retains its notices and history.
-
-Since version 1.4.0, GNU Prolog is distributed under a dual license. You may
-redistribute and/or modify it under either:
-
-- the GNU Lesser General Public License, version 3 or later; or
-- the GNU General Public License, version 2 or later;
-
-or under both in parallel. See [COPYING](COPYING) for the complete terms.
-Versions before 1.4.0 were released entirely under the GPL.
-
-GNU Prolog is provided without warranty, including implied warranties of
-merchantability or fitness for a particular purpose.
+Please report whether a defect reproduces in upstream GNU Prolog or only in a proposed fork-specific feature. That single distinction preserves a surprising amount of engineering truth.
 
 ---
 
-**Keep the native spine. Open the compiler. Let Prolog teach the machine how to
-compile Prolog.**
+<div align="center">
+
+### 間 — ma
+
+*Between a goal and its proof, leave room for another path.*
+
+**Keep the native spine. Let the logic breathe.**
+
+<sub>gprolog · an evolutionary compiler study · no unearned claims</sub>
+
+</div>
