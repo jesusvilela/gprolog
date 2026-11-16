@@ -128,11 +128,23 @@ the original tests reused a bound `L` variable between calls inside
 Each test is now isolated into its own predicate; CI now tests the actual
 generated float instructions and verifies a regular source checkout.
 
-**What this does not establish:** no old-versus-new compiler benchmark has
-yet measured speed, memory, or compilation overhead; this small test suite
-is not a complete ISO conformance proof or independent cross-platform
-replication. PR #2 remains draft pending performance evidence and review.
-The next bounded benchmark should compare this head against the historical
-goal-expansion-only compiler on identical static float workloads with
-predeclared query distributions, repeated runs, and cold/warm conditions.
-Variable-call behavior and mixed-type workloads remain negative controls.
+### Matched old-versus-new benchmark — observed, not generalized
+
+A preregistered CI comparison between the pinned goal-expansion baseline
+(`12b4284378a59098b9004fe2b454ad9c19536370`) and the float-indexing
+candidate (`a1098e229ff83a3d2004b5edcb6b5a86299a55ed`)
+passed [Actions run 43898849916](https://github.com/jesusvilela/gprolog/actions/runs/43898849916).
+The uniform float-hit synthetic fixture returned a **7.222x** median paired
+native execution speedup across seven alternating-order pairs. An atom-only
+negative control returned **1.015x** and a variable-call control **0.999x**.
+For the primary workload, compiled executable size rose 4,312 bytes and
+median compilation time from 0.087626 to 0.089480 seconds. Peak RSS was
+essentially unchanged. See [preregistered protocol and results](FLOAT_INDEX_BENCHMARK.md) and [evidence manifest](FLOAT_INDEX_AUDIT.json)
+for the exact scope, other workloads, costs, and retired interpretations.
+
+**Limits:** this is a synthetic benchmark on one Ubuntu 24.04 x86-64 runner,
+not a general-purpose Prolog performance claim or a complete ISO conformance
+proof. It does not verify 32-bit ABI or unusual non-finite float semantics.
+The bootstrap and benchmark suites are authored within this fork and are
+not independent reproduction. PR #2 remains draft pending independent,
+real-workload and cross-platform review.
