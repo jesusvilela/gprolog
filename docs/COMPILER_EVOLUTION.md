@@ -84,3 +84,24 @@ separately from local Windows verification.
 Native JIT is not assumed to be necessary: GNU already emits native code. New
 features must earn their complexity on measured workloads. Proprietary SICStus
 code is not a source for copying implementation.
+
+## Second slice: static first-argument float indexing (experimental)
+
+Branch target: `feature/float-indexing` based on the goal-expansion branch.
+The earlier GNU compiler intentionally treated float heads as unindexed.
+The new source path separates float heads into their own clause-key bucket
+and uses `switch_on_term_flt/6` plus `switch_on_float/1` only when
+a multi-clause indexing group contains float heads. Without a float bucket,
+it still emits the historical `switch_on_term/5`, avoiding global WAM churn.
+WAM-to-MA accepts both instruction formats for staged self-hosting.
+
+Float switch tables store complete doubles and verify actual numeric equality
+after hash collisions. Both signs of zero use the same hash key; NaN is not
+a matching key. Variable-headed clauses remain as ordered segments; cuts and
+answer sequences must be unchanged. The change is confined to static clause
+indexing; dynamic predicates, multi-argument indexing and JIT are excluded.
+
+Run `python3 tests/float_indexing/run.py --bin-dir ./bin` after an
+in-place build. Then run `cd src && make check && make check-e && make check-i`.
+These are acceptance gates, not a performance claim. Until all pass on the
+exact branch commit, this slice must stay draft.

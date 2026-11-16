@@ -23,6 +23,8 @@ jobs:
           make install
       - name: Goal expansion semantic regressions
         run: python3 tests/goal_expansion/run.py --bin-dir "$PWD/bin"
+      - name: Float indexing semantic regressions
+        run: python3 tests/float_indexing/run.py --bin-dir "$PWD/bin"
       - name: Native bootstrap and backend checks
         working-directory: src
         run: make check
