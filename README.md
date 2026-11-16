@@ -105,6 +105,8 @@ flowchart LR
 
 The implementation has passed 13 semantic checks per native/consulted path; targeted finite-float differential tests on Linux ELF64 and i686 ELF32; and deliberate near-full hash-collision tests (17 distinct keys sharing one starting bucket in an 18-slot table), including missing lookups and source-order duplicate answers. All results are **bounded to their fixtures**.
 
+**The path matters.** A later [test-only C probe audit](docs/FLOAT_INDEX_PROBE_AUDIT.md) directly measured native ELF64 and i686 ELF32 insertion depths of 1–17 and an 18-probe missing-key lookup in these collision fixtures. Consulted Prolog returned the correct answers but did not emit a trace from the instrumented C function. The original assumption that both modes traverse that function was **retired**; the narrower native result survived. No instrumentation was added to the production runtime.
+
 **Performance, carefully scoped:** three matched CI runs found approximately **6.01×–7.22×** native speedups for a synthetic 128-key float-heavy workload. Atom-only and variable-call controls were approximately unchanged. This is *not* a general GNU Prolog speedup, nor independent replication. NaN/infinity behavior, additional ABIs, and real-world workloads remain open.
 
 Read the [benchmark protocol](docs/FLOAT_INDEX_BENCHMARK.md), [collision experiment](docs/FLOAT_INDEX_COLLISION_PROTOCOL.md), and [evidence ledger](docs/FLOAT_INDEX_AUDIT.json). **PR #2 is merged into this fork; the scientific and portability limits remain unresolved.**
