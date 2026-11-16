@@ -58,21 +58,25 @@
   "tests": {
     "black_box": [
       "Analytical expected total for every executed workload",
-      "Float indexing 13 native and 13 consulted tests on PR2"
+      "Float indexing 13 native and 13 consulted tests on PR2",
+      "Independent Python source-order oracle compared against baseline and candidate in native/consulted modes across 3 x 99-clause / 43-query programs per ABI"
     ],
     "structural": [
       "Inspect generated WAM for switch_on_term_flt and switch_on_float",
-      "Inspect float-free WAM for historical switch_on_term"
+      "Inspect float-free WAM for historical switch_on_term",
+      "readelf -h confirms baseline/candidate gplc and gprolog are ELF32 in i686 multilib workflow"
     ],
     "property_based": [
       "Deterministically generated permuted keys; no broad property-based guarantee"
     ],
     "metamorphic": [
       "Float-free control expected unchanged",
-      "Variable-call control expected unchanged"
+      "Variable-call control expected unchanged",
+      "3 deterministic permutations of source clause order, each checked against independently generated expected answer order"
     ],
     "fuzzing": [
-      "not applicable: no adversarial fuzz campaign conducted"
+      "not applicable: no adversarial fuzz campaign conducted",
+      "Bounded deterministic generated boundary literals and three source permutations (not coverage-guided fuzzing)"
     ],
     "historical": [
       "Goal expansion 29 semantic checks per native and consulted path",
@@ -81,7 +85,8 @@
   },
   "controls": {
     "matched_baselines": [
-      "12b4284378a59098b9004fe2b454ad9c19536370 fixed baseline"
+      "12b4284378a59098b9004fe2b454ad9c19536370 fixed baseline",
+      "i686 ABI: same pinned baseline compiled with i686 flags; both ELF32"
     ],
     "negative_controls": [
       "atom_control ratio 1.015x",
@@ -103,19 +108,25 @@
   "evidence": {
     "primary_sources": [
       "https://github.com/jesusvilela/gprolog/pull/2",
-      "https://github.com/jesusvilela/gprolog/actions/runs/43898849916"
+      "https://github.com/jesusvilela/gprolog/actions/runs/43898849916",
+      "https://github.com/jesusvilela/gprolog/actions/runs/43938946712",
+      "https://github.com/jesusvilela/gprolog/actions/runs/43939319562"
     ],
     "execution_records": [
       "GitHub Actions 43898849916 completed success; raw artifact 14241261189, retained 30 days",
       "Primary baseline median 0.559387337 s, candidate median 0.078323457 s; median paired ratio 7.221948444",
-      "Atom control ratio 1.015221595; variable control ratio 0.999002359"
+      "Atom control ratio 1.015221595; variable control ratio 0.999002359",
+      "x86-64 semantic differential Actions 43938946712 at c15affb4: 3 seeded 99-clause/43-query programs, 12/12 baseline/candidate native/consulted paths passed",
+      "i686 ELF32 semantic differential Actions 43939319562 at 53a79891: 4 binaries verified ELF32, 12/12 baseline/candidate native/consulted paths passed",
+      "Follow-up float_uniform synthetic benchmark: 6.007x paired median on second x86-64 runner, vs 7.222x initially; no cross-run CI"
     ],
     "independent_witnesses": [],
     "claim_to_artifact_map": [
       "Performance statement -> raw paired benchmark artifact and source program generator",
       "Semantic correctness -> analytical totals and PR2 regression tests",
       "WAM dispatch -> generated WAM inspection gates",
-      "Resource cost -> compile timing, native file sizes, peak RSS records"
+      "Resource cost -> compile timing, native file sizes, peak RSS records",
+      "Finite literal cross-ABI behavior -> i686 ELF32 differential workflow artifact and logs"
     ]
   },
   "round_trip": {
@@ -199,13 +210,29 @@
         "remainder": [
           "real application benchmark"
         ]
+      },
+      {
+        "from": "original requirement",
+        "to": "refined verification gate",
+        "preserved": [
+          "float-specific lookup semantics on Linux"
+        ],
+        "transformed": [
+          "2 tested ABIs and oracle comparisons"
+        ],
+        "lost": [
+          "independent physical hardware validation"
+        ],
+        "remainder": [
+          "other architectures, non-finite floats and workloads"
+        ]
       }
     ]
   },
   "result": {
-    "observed": "Uniform float synthetic workload showed 7.222x median paired speedup; atom-only and variable controls approximately 1x",
+    "observed": "Uniform float synthetic workload showed 7.222x median paired speedup; atom-only and variable controls approximately 1x; exact-oracle semantic differential passed on both x86-64 and multilib i686, including three source permutations and four execution modes per seed",
     "effect_size": "Paired median ratio 7.221948444; within-run percentile bootstrap [7.13286,7.27431]",
-    "uncertainty": "Seven correlated pairs on one shared virtual runner; bootstrap not cross-host interval",
+    "uncertainty": "Seven paired timing samples per x86-64 run; first median speedup 7.222x and follow-up 6.007x. Bootstrap reflects within-run variation only, not cross-run or cross-machine reproducibility.",
     "status_after": "M",
     "retired_claims": [
       "Early findall failure was a compiler defect (fixture binding error)",
@@ -215,8 +242,10 @@
     "active_remainder": [
       "Independent cross-platform replication",
       "Real application-derived workload",
-      "32-bit and unusual float semantic properties",
-      "Potential precision or code-size tradeoffs"
+      "Potential precision or code-size tradeoffs",
+      "NaN/infinity syntax/runtime semantics remain untested",
+      "Independent physical 32-bit CPU, Windows and non-little-endian platforms remain untested",
+      "Second x86-64 benchmark produced 6.007x; cross-run host variation unresolved"
     ]
   }
 }

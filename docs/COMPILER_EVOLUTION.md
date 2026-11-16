@@ -144,7 +144,12 @@ for the exact scope, other workloads, costs, and retired interpretations.
 
 **Limits:** this is a synthetic benchmark on one Ubuntu 24.04 x86-64 runner,
 not a general-purpose Prolog performance claim or a complete ISO conformance
-proof. It does not verify 32-bit ABI or unusual non-finite float semantics.
+proof. A separate i686 multilib check now verifies ELF32 builds and matching finite-literal behavior, but does not verify unusual non-finite float semantics or other platforms.
 The bootstrap and benchmark suites are authored within this fork and are
 not independent reproduction. PR #2 remains draft pending independent,
 real-workload and cross-platform review.
+
+
+### Cross-ABI semantic witness — bounded
+
+[Adversarial x86-64 differential CI](https://github.com/jesusvilela/gprolog/actions/runs/43938946712) and [i686 ELF32 differential CI](https://github.com/jesusvilela/gprolog/actions/runs/43939319562) both passed three seeded 99-clause programs and 43 queries against a distinct Python source-order oracle, using historical baseline and new candidate compilers in native and consulted modes. The i686 toolchain check confirms both compiler binaries are actually ELF32. This is *not* independent OS/hardware or NaN/infinity evidence; see [scope and results](FLOAT_INDEX_BENCHMARK.md) for limitations.

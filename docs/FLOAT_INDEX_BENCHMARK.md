@@ -87,12 +87,32 @@ All raw per-sample execution times, execution order, compiler timings, generated
 | Answers and ordering remain intact in fixtures | **M / observed** | Prior 13 semantic tests per native and consulted path; separate paired benchmark answer oracles |
 | Native performance improves on uniform float synthetic calls | **M / measured** | 7.222× median paired ratio, with negative controls |
 | Performance improves in general applications | **H / unresolved** | No application corpus, independent OS/architecture replication or representative workload distribution |
-| 32-bit/non-finite float semantics are preserved | **H / unresolved** | Not directly exercised on 32-bit targets; non-finite values require an explicit semantics oracle |
+| Finite literal semantics on tested i686 ABI | **M / observed** | Multilib ELF32 baseline/candidate semantic differential, Actions #43939319562 |
+| Non-finite float semantics and other ABIs are preserved | **H / unresolved** | No NaN/infinity fixture or independent OS/machine proof |
 | The prior early `findall/3` failure was a runtime bug | **R / retired** | Original test leaked an instantiated variable between cases |
 | Green build with checked-in WAM alone proved float dispatch | **R / retired** | Initial build reused stale bootstrap WAM; corrected and WAM emission asserted |
 
 ### Next smallest independent witness
 
-Re-run the exact pinned commits on a separately managed, appropriately isolated system, preferably including a 32-bit ABI where supported. Use existing application-derived static predicates and query distributions; keep source, compilation settings, and semantic oracles matched. If the real workload shows no gain, retain the synthetic measurement but retire any extrapolation to practical speedups.
+Re-run the pinned commits on a separately managed, appropriately isolated system with different OS/CPU, since i686 multilib has now passed on the same Linux host family. Use existing application-derived static predicates and query distributions; keep source, compilation settings, and semantic oracles matched. If the real workload shows no gain, retain the synthetic measurement but retire any extrapolation to practical speedups.
 
 The benchmark workflow now runs on relevant compiler or benchmark-source changes, rather than every documentation-only push. This reduces unnecessary runner usage while preserving the manual-dispatch option.
+
+
+## Second semantic gate — adversarial source-order oracle (16 November 2026)
+
+[Linux x86-64 differential + matched benchmark run #43938946712](https://github.com/jesusvilela/gprolog/actions/runs/43938946712) completed successfully on commit `c15affb4c40dab8a4ac2126ee2e5b22b0c24d1af`.
+
+The new `tests/float_indexing/differential.py` generates **99-clause programs with 43 bound-key queries** for each of three deterministic source permutations (seeds 20261116, 271828, 314159). A separate Python reference model computes ordered answer lists directly from source clauses with numeric binary64 equality, rather than replaying either Prolog implementation. The same generated source is compiled and consulted by **both** compilers. All **12 tested execution paths per ABI** produced exactly the expected output.
+
+The cases cover signed zero; adjacent representable values around 0.1; 5.0e-324 and 1.0e-320 subnormals; minimum-normal and maximum-finite-scale literals; mixed integer, atom, structure and list heads; missing keys; wildcard-headed clauses interleaved in source; an unbound first argument; and a cut-based predicate. This is a bounded deterministic regression test, not exhaustive floating-point verification.
+
+The same run reran the float-uniform microbenchmark: **6.007x paired median speedup**, versus **7.222x** in the earlier run. Both remain positive within their synthetic scope, but the between-run difference demonstrates that within-run bootstrap intervals are **not** cross-run or cross-machine confidence intervals. No speedup has been measured on a real application-derived float workload.
+
+### i686 / ELF32 ABI gate
+
+[32-bit i686 multilib run #43939319562](https://github.com/jesusvilela/gprolog/actions/runs/43939319562), commit `53a79891cc90bdb15311ae5dc014f626f5d66db4`, **passed**. Both the fixed historical compiler and float-indexed compiler were built with i686 target settings, and `readelf` confirmed all four `gprolog`/`gplc` binaries were **ELF32**. The same three 99-clause / 43-query permutations passed native and consulted execution for both builds: 12/12 execution paths.
+
+This tests a distinct **32-bit ABI** where float words are split across the WAM representation, but it still runs under a Linux x86-64 GitHub host with a multilib userland. It is not independent 32-bit hardware reproduction, not a Windows or ARM compatibility result, and not a NaN/infinity certification. The underlying float table must continue to use full double keys rather than truncating to 32-bit words.
+
+Raw evidence is retained as GitHub Actions artifacts for both runs (30-day artifact retention), not copied into the committed source tree. The source generator, oracle, and compiler changes remain correlated project-authored evidence; external review is still a gate.
