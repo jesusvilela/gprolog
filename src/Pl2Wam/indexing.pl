@@ -215,15 +215,20 @@ mk_indexing(2, LCC, _, _, Lev1, WamCode) :-
 	    WamCode = WamCode1
 	;   WamCode = [trust_me_else_fail|WamCode1]
 	),
+	split(LCC, Atm, Int, Flt, Lst, Stc), !,
+	(   Flt = [] ->
+	    SwtTerm = switch_on_term(LabVar, LabAtm, LabInt, LabLst, LabStc)
+	;   SwtTerm = switch_on_term_flt(LabVar, LabAtm, LabInt, LabFlt, LabLst, LabStc)
+	),
 	(   LCC = [_] ->              % no switch_on_term for only one clause
 	    WamCode2 = [_|WamCode2Rest],               % remove useless label
 	    WamCode1 = WamCode2Rest
-	;   WamCode1 = [switch_on_term(LabVar, LabAtm, LabInt, LabLst, LabStc)|WamCode2]
+	;   WamCode1 = [SwtTerm|WamCode2]
 	),
 	WamCode2 = WamSwtAtm,
-	split(LCC, Atm, Int, Lst, Stc), !,
 	gen_switch(Atm, switch_on_atom, LabAtm, WamSwtInt, WamSwtAtm),
-	gen_switch(Int, switch_on_integer, LabInt, WamLst, WamSwtInt),
+	gen_switch(Int, switch_on_integer, LabInt, WamSwtFlt, WamSwtInt),
+	gen_switch(Flt, switch_on_float, LabFlt, WamLst, WamSwtFlt),
 	gen_list(Lst, LabLst, WamSwtStc, WamLst),
 	gen_switch(Stc, switch_on_structure, LabStc, WamCode3, WamSwtStc),
 	gen_insts(LCC, LabVar, WamCode3).
@@ -231,27 +236,36 @@ mk_indexing(2, LCC, _, _, Lev1, WamCode) :-
 
 
 
-split(LCC, Atm1, Int1, Lst, Stc1) :-
-	split1(LCC, Atm, Int, Lst, Stc),
+split(LCC, Atm1, Int1, Flt1, Lst, Stc1) :-
+	split1(LCC, Atm, Int, Flt, Lst, Stc),
 	group_by_keys(Atm, Atm1),
 	group_by_keys(Int, Int1),
+	group_by_keys(Flt, Flt1),
 	group_by_keys(Stc, Stc1).
 
 
-split1([], [], [], [], []).
+split1([], [], [], [], [], []).
 
-split1([cl(Ad, FirstArg, _)|LCC], Atm, Int, Lst, Stc) :-
-	split2(FirstArg, Ad, AtmNext, IntNext, LstNext, StcNext, Atm, Int, Lst, Stc),
-	split1(LCC, AtmNext, IntNext, LstNext, StcNext).
-	
+split1([cl(Ad, FirstArg, _)|LCC], Atm, Int, Flt, Lst, Stc) :-
+	split2(FirstArg, Ad, AtmNext, IntNext, FltNext, LstNext, StcNext,
+	       Atm, Int, Flt, Lst, Stc),
+	split1(LCC, AtmNext, IntNext, FltNext, LstNext, StcNext).
 
-split2(atm(A), Ad, Atm, Int, Lst, Stc, [A-Ad|Atm], Int, Lst, Stc).
 
-split2(int(N), Ad, Atm, Int, Lst, Stc, Atm, [N-Ad|Int], Lst, Stc).
+split2(atm(A), Ad, Atm, Int, Flt, Lst, Stc,
+       [A-Ad|Atm], Int, Flt, Lst, Stc).
 
-split2(lst, Ad, Atm, Int, Lst, Stc, Atm, Int, [Ad|Lst], Stc).
+split2(int(N), Ad, Atm, Int, Flt, Lst, Stc,
+       Atm, [N-Ad|Int], Flt, Lst, Stc).
 
-split2(stc(F, N), Ad, Atm, Int, Lst, Stc, Atm, Int, Lst, [F/N-Ad|Stc]).
+split2(flt(N), Ad, Atm, Int, Flt, Lst, Stc,
+       Atm, Int, [N-Ad|Flt], Lst, Stc).
+
+split2(lst, Ad, Atm, Int, Flt, Lst, Stc,
+       Atm, Int, Flt, [Ad|Lst], Stc).
+
+split2(stc(F, N), Ad, Atm, Int, Flt, Lst, Stc,
+       Atm, Int, Flt, Lst, [F/N-Ad|Stc]).
 
 
 

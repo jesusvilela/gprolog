@@ -78,7 +78,7 @@ defines_first_arg(get_atom(A, 0), atm(A)).
 
 defines_first_arg(get_integer(N, 0), int(N)).
 
-%defines_first_arg(get_float(N,0),flt(N)).            % no indexing on floats
+defines_first_arg(get_float(N, 0), flt(N)).
 
 defines_first_arg(get_nil(0), atm([])).
 

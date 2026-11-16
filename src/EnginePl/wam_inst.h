@@ -237,6 +237,10 @@ SwtInf;
 
 typedef SwtInf *SwtTbl;
 
+/* Separate representation retains full double keys, including on 32-bit. */
+typedef struct { double key; CodePtr codep; } FltSwtInf;
+typedef FltSwtInf *FltSwtTbl;
+
 
 
 
@@ -251,6 +255,8 @@ typedef SwtInf *SwtTbl;
 WamWord FC Pl_Create_Functor_Arity_Tagged(char *func_str, int arity);
 
 SwtTbl FC Pl_Create_Swt_Table(int size);
+FltSwtTbl FC Pl_Create_Flt_Swt_Table(int size);
+void FC Pl_Create_Swt_Flt_Element(FltSwtTbl t, int size, double key, CodePtr codep);
 
 void FC Pl_Create_Swt_Atm_Element(SwtTbl t, int size, int atom, CodePtr codep);
 
@@ -334,6 +340,7 @@ void FC Pl_Allocate(int n);
 void FC Pl_Deallocate(void);
 
 CodePtr FC Pl_Switch_On_Term(CodePtr c_var, CodePtr c_atm, CodePtr c_int, CodePtr c_lst, CodePtr c_stc);
+CodePtr FC Pl_Switch_On_Term_Flt(CodePtr c_var, CodePtr c_atm, CodePtr c_int, CodePtr c_flt, CodePtr c_lst, CodePtr c_stc);
 CodePtr FC Pl_Switch_On_Term_Var_Atm(CodePtr c_var, CodePtr c_atm);
 CodePtr FC Pl_Switch_On_Term_Var_Stc(CodePtr c_var, CodePtr c_stc);
 CodePtr FC Pl_Switch_On_Term_Var_Atm_Lst(CodePtr c_var, CodePtr c_atm, CodePtr c_lst);
@@ -342,6 +349,7 @@ CodePtr FC Pl_Switch_On_Term_Var_Atm_Stc(CodePtr c_var, CodePtr c_atm, CodePtr c
 CodePtr FC Pl_Switch_On_Atom(SwtTbl t, int size);
 
 CodePtr FC Pl_Switch_On_Integer(SwtTbl t, int size);
+CodePtr FC Pl_Switch_On_Float(FltSwtTbl t, int size);
 PlLong FC Pl_Switch_On_Integer_For_Dichotomy(void);
 
 CodePtr FC Pl_Switch_On_Structure(SwtTbl t, int size);

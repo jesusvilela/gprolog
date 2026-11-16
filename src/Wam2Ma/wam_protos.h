@@ -147,9 +147,13 @@ void F_label(ArgVal arg[]);
 
 void F_switch_on_term(ArgVal arg[]);
 
+void F_switch_on_term_flt(ArgVal arg[]);
+
 void F_switch_on_atom(ArgVal arg[]);
 
 void F_switch_on_integer(ArgVal arg[]);
+
+void F_switch_on_float(ArgVal arg[]);
 
 void F_switch_on_structure(ArgVal arg[]);
 
