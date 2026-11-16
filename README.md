@@ -20,7 +20,7 @@
 
 **GNU Prolog** is the native-code Prolog compiler and finite-domain constraint system developed by **Daniel Diaz**. Its compact compiled executables, ISO-oriented semantics, Warren Abstract Machine (WAM) pipeline and Prolog/C interface are the point of departure here—not legacy baggage to be discarded.
 
-This repository is **a personal fork of GNU Prolog**, not a separate implementation or an official replacement for upstream. Its `master` branch retains the **GNU Prolog 1.6.0** base ([VERSION](VERSION), [NEWS](NEWS)) and now includes a narrowly scoped, experimental goal-expansion extension. Float first-argument indexing is being evaluated separately in [draft PR #2](https://github.com/jesusvilela/gprolog/pull/2), **not presented here as a shipped upstream feature**.
+This repository is **a personal fork of GNU Prolog**, not a separate implementation or an official replacement for upstream. Its `master` branch retains the **GNU Prolog 1.6.0** base ([VERSION](VERSION), [NEWS](NEWS)), with two explicitly experimental extensions merged **in this fork**: [guarded goal expansion](https://github.com/jesusvilela/gprolog/pull/1) and [static float first-argument indexing](https://github.com/jesusvilela/gprolog/pull/2). Neither is an upstream GNU Prolog release feature or a universal compatibility promise.
 
 The original GNU Prolog [README](README) remains preserved, alongside a [verbatim archive](docs/UPSTREAM_README_1.6.0.txt). The upstream project's language, history, and licensing stay visible even as this fork's landing page evolves.
 
@@ -89,9 +89,9 @@ See [the exact scope and tests](docs/COMPILER_EVOLUTION.md). **Upstream GNU Prol
 
 ## 04 / The float-shaped question
 
-<sub>DRAFT / UNDER REVIEW · [`feature/float-indexing`](https://github.com/jesusvilela/gprolog/tree/feature/float-indexing) · NOT YET ON `master`</sub>
+<sub>EXPERIMENTAL · MERGED INTO THIS FORK'S `master` · NOT AN UPSTREAM GNU PROLOG FEATURE</sub>
 
-**[PR #2 — static first-argument float indexing](https://github.com/jesusvilela/gprolog/pull/2)** extends, rather than replaces, GNU Prolog's WAM clause indexing. Where static float-headed clauses occur, the experimental branch emits `switch_on_term_flt/6` and `switch_on_float/1` backed by full `double` keys. Float-free groups retain the historical `switch_on_term/5` path.
+**[Merged PR #2 — static first-argument float indexing](https://github.com/jesusvilela/gprolog/pull/2)** extends, rather than replaces, GNU Prolog's WAM clause indexing. Where static float-headed clauses occur, this fork emits `switch_on_term_flt/6` and `switch_on_float/1` backed by full `double` keys. Float-free groups retain the historical `switch_on_term/5` path.
 
 ```mermaid
 flowchart LR
@@ -103,11 +103,11 @@ flowchart LR
     E --> F
 ```
 
-The provisional implementation has passed 13 semantic checks per native/consulted path; targeted finite-float differential tests on Linux ELF64 and i686 ELF32; and deliberate near-full hash-collision tests (17 distinct keys sharing one starting bucket in an 18-slot table), including missing lookups and source-order duplicate answers. All results are **bounded to their fixtures**.
+The implementation has passed 13 semantic checks per native/consulted path; targeted finite-float differential tests on Linux ELF64 and i686 ELF32; and deliberate near-full hash-collision tests (17 distinct keys sharing one starting bucket in an 18-slot table), including missing lookups and source-order duplicate answers. All results are **bounded to their fixtures**.
 
 **Performance, carefully scoped:** three matched CI runs found approximately **6.01×–7.22×** native speedups for a synthetic 128-key float-heavy workload. Atom-only and variable-call controls were approximately unchanged. This is *not* a general GNU Prolog speedup, nor independent replication. NaN/infinity behavior, additional ABIs, and real-world workloads remain open.
 
-Read the [benchmark protocol](https://github.com/jesusvilela/gprolog/blob/feature/float-indexing/docs/FLOAT_INDEX_BENCHMARK.md), [collision experiment](https://github.com/jesusvilela/gprolog/blob/feature/float-indexing/docs/FLOAT_INDEX_COLLISION_PROTOCOL.md), and [evidence ledger](https://github.com/jesusvilela/gprolog/blob/feature/float-indexing/docs/FLOAT_INDEX_AUDIT.json). **PR #2 remains draft and unmerged while those limits are evaluated.**
+Read the [benchmark protocol](docs/FLOAT_INDEX_BENCHMARK.md), [collision experiment](docs/FLOAT_INDEX_COLLISION_PROTOCOL.md), and [evidence ledger](docs/FLOAT_INDEX_AUDIT.json). **PR #2 is merged into this fork; the scientific and portability limits remain unresolved.**
 
 ### Elsewhere in the search space
 
@@ -149,9 +149,10 @@ make check
 make check-e
 make check-i
 python3 ../tests/goal_expansion/run.py --bin-dir "$PWD/../bin"
+python3 ../tests/float_indexing/run.py --bin-dir "$PWD/../bin"
 ```
 
-Consult [INSTALL](INSTALL), [src/WINDOWS](src/WINDOWS), [PROBLEMS](PROBLEMS) and the [manual](doc/README) for the exact platform, toolchain, execution and troubleshooting requirements. The guarded goal-expansion tests now apply to this fork's `master`. The additional float-indexing checks live on [PR #2's branch](https://github.com/jesusvilela/gprolog/pull/2) until that change is separately accepted.
+Consult [INSTALL](INSTALL), [src/WINDOWS](src/WINDOWS), [PROBLEMS](PROBLEMS) and the [manual](doc/README) for the exact platform, toolchain, execution and troubleshooting requirements. Both compiler-extension regression suites now run on this fork's `master`. These are local reproduction commands; historical baseline comparisons and the heavier i686/collision experiments have separate CI workflows and preserved evidence.
 
 ## 06 / An evidence ledger, not a leaderboard
 
@@ -164,7 +165,7 @@ Every compiler change should answer the same questions: *What is changed? What i
 - **Attribution:** distinguish GNU Prolog's established features from this fork's additions and from other Prolog implementations' ideas.
 - **Scientific humility:** a passing test suite validates its tested contract, not universal ISO conformance or a performance advantage.
 
-The merged goal-expansion CI and the draft float-indexing CI are separately traceable from their linked PRs. The float measurements were produced by matched GitHub Actions runs with an independently authored *source-order model*, not an independent third-party laboratory. **A green CI suite is a tested scope, not a proof of universal semantics.**
+Both merged extensions are traceable through their original PRs and CI runs. The float measurements came from matched GitHub Actions builds and a separate, project-authored *source-order oracle*—not an independent third-party laboratory. **A green CI suite establishes only the exercised contract, not universal semantics or performance.**
 
 ## 07 / Provenance never gets optimized away
 

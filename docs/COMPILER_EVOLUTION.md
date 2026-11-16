@@ -1,7 +1,7 @@
 # Compiler evolution in this fork
 
 Base: GNU Prolog 1.6.0 source at `55fd5878acb069b9067da905794627388137076e`.
-First slice: branch `feature/goal-expansion`, 2026-11-16.
+First slice: `feature/goal-expansion` — merged as PR #1 into this fork's `master` on 2026-11-16.
 
 Preserve GNU's native-code backend and ISO behavior. Transfer documented
 capabilities through small implementations with semantic tests. This is not a
@@ -87,7 +87,7 @@ code is not a source for copying implementation.
 
 ## Second slice: static first-argument float indexing (experimental)
 
-Branch target: `feature/float-indexing` based on the goal-expansion branch.
+Second slice originated on `feature/float-indexing` and was merged as PR #2 into this fork's `master` on 2026-11-16.
 The earlier GNU compiler intentionally treated float heads as unindexed.
 The new source path separates float heads into their own clause-key bucket
 and uses `switch_on_term_flt/6` plus `switch_on_float/1` only when
@@ -120,7 +120,7 @@ These are acceptance gates, not a performance claim.
   passed its 29 checks in each path.
 - Native, emulated, and interpreted fixed-point bootstrap checks passed.
   Generated `first_arg.wam`, `indexing.wam`, and `wam_emit.wam`
-  are committed in the feature branch and synchronized with their sources.
+  are committed in this fork's `master` and synchronized with their sources.
 
 Two earlier failures were diagnostic, not a reason to weaken requirements:
 the original tests reused a bound `L` variable between calls inside
@@ -146,8 +146,8 @@ for the exact scope, other workloads, costs, and retired interpretations.
 not a general-purpose Prolog performance claim or a complete ISO conformance
 proof. A separate i686 multilib check now verifies ELF32 builds and matching finite-literal behavior, but does not verify unusual non-finite float semantics or other platforms.
 The bootstrap and benchmark suites are authored within this fork and are
-not independent reproduction. PR #2 remains draft pending independent,
-real-workload and cross-platform review.
+not independent reproduction. PR #2 was merged into this experimental fork,
+while independent, real-workload and cross-platform review remains open.
 
 
 ### Cross-ABI semantic witness — bounded
