@@ -35,11 +35,16 @@ check(Name, Goal) :-
     ).
 
 main :-
+    (findall(X, pick(3.5, X), L0) ->
+        format('TRACE initial findall success: ~w~n', [L0])
+    ;   format('TRACE initial findall failure~n', [])
+    ),
+    flush_output,
     check(duplicate_float,
         (findall(X, pick(1.5, X), L),
          L == [first, second, wildcard])),
     check(another_float,
-        (format('TRACE before 3.5~n', []), flush_output, (pick(3.5, three) -> format('TRACE direct yes~n', []) ; format('TRACE direct no~n', [])), flush_output, (findall(X, pick(3.5, X), L) -> format('TRACE findall succeeds~n', []) ; (format('TRACE findall fails~n', []), L = failed)), flush_output, format('TRACE float 3.5 answers=~w~n', [L]), flush_output, L == [three, wildcard])),
+        (format('TRACE before 3.5~n', []), flush_output, (pick(3.5, three) -> format('TRACE direct yes~n', []) ; format('TRACE direct no~n', [])), flush_output, (findall(X, pick(3.5, X), L) -> format('TRACE findall succeeds~n', []) ; (format('TRACE findall fails: L=~w~n', [L]), L = failed)), flush_output, format('TRACE float 3.5 answers=~w~n', [L]), flush_output, L == [three, wildcard])),
     check(float_absent_fallback,
         (findall(X, pick(19.5, X), L), L == [wildcard])),
     check(signed_zero,
