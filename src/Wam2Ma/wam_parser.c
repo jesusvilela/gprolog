@@ -138,8 +138,10 @@ ParseInf inst[] = {
   {"label", F_label, 1, {C_INT}},
 
   {"switch_on_term", F_switch_on_term, 5, {LABEL, LABEL, LABEL, LABEL, LABEL}},
+  {"switch_on_term_flt", F_switch_on_term_flt, 6, {LABEL, LABEL, LABEL, LABEL, LABEL, LABEL}},
   {"switch_on_atom", F_switch_on_atom, 1, {L2(ATOM, C_INT)}},
   {"switch_on_integer", F_switch_on_integer, 1, {L2(INTEGER, C_INT)}},
+  {"switch_on_float", F_switch_on_float, 1, {L2(FLOAT, C_INT)}},
   {"switch_on_structure", F_switch_on_structure, 1, {L2(F_N, C_INT)}},
 
   {"try_me_else", F_try_me_else, 1, {C_INT}},

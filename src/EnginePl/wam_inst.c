@@ -72,6 +72,7 @@ DblInt;
  *---------------------------------*/
 
 static SwtInf *Locate_Swt_Element(SwtTbl t, int size, PlLong key);
+static FltSwtInf *Locate_Flt_Swt_Element(FltSwtTbl t, int size, double key);
 
 
 
@@ -108,6 +109,30 @@ Pl_Create_Swt_Table(int size)
   t = (SwtTbl) Calloc(size, sizeof(SwtInf));
 
   return t;
+}
+
+
+
+
+/* A separate collision-safe float table avoids truncating doubles on 32-bit. */
+FltSwtTbl FC
+Pl_Create_Flt_Swt_Table(int size)
+{
+  return (FltSwtTbl) Calloc(size + 1, sizeof(FltSwtInf));
+}
+
+
+void FC
+Pl_Create_Swt_Flt_Element(FltSwtTbl t, int size, double key, CodePtr codep)
+{
+  FltSwtInf *swt;
+
+  if (key != key)              /* NaN cannot unify with get_float/2 */
+    return;
+
+  swt = Locate_Flt_Swt_Element(t, size, key);
+  swt->key = key;
+  swt->codep = codep;
 }
 
 
@@ -192,6 +217,36 @@ Locate_Swt_Element(SwtTbl t, int size, PlLong key)
       swt++;
       if (swt == endt)
 	swt = t;
+    }
+
+  return swt;
+}
+
+
+
+
+/* Hash only to choose a starting slot. Full double equality resolves all
+ * collisions; signed zeros share a hash because get_float/2 compares equal. */
+static FltSwtInf *
+Locate_Flt_Swt_Element(FltSwtTbl t, int size, double key)
+{
+  unsigned long hash = 2166136261UL;
+  const unsigned char *bytes;
+  FltSwtInf *swt, *end;
+  int i;
+
+  if (key == 0.0)
+    key = 0.0;
+  bytes = (const unsigned char *) &key;
+  for (i = 0; i < (int) sizeof(key); i++)
+    hash = (hash ^ bytes[i]) * 16777619UL;
+
+  swt = t + (hash % (unsigned long) (size + 1));
+  end = t + size + 1;
+  while (swt->codep && swt->key != key)
+    {
+      if (++swt == end)
+        swt = t;
     }
 
   return swt;
@@ -1097,6 +1152,36 @@ Pl_Switch_On_Term(CodePtr c_var, CodePtr c_atm, CodePtr c_int, CodePtr c_lst, Co
 
 
 
+/* New instruction only: historical switch_on_term/5 stays untouched. */
+CodePtr FC
+Pl_Switch_On_Term_Flt(CodePtr c_var, CodePtr c_atm, CodePtr c_int,
+                      CodePtr c_flt, CodePtr c_lst, CodePtr c_stc)
+{
+  WamWord word, tag_mask;
+  CodePtr codep;
+
+  DEREF(A(0), word, tag_mask);
+  A(0) = word;
+
+  if (tag_mask == TAG_FLT_MASK)
+    codep = c_flt;
+  else if (tag_mask == TAG_INT_MASK)
+    codep = c_int;
+  else if (tag_mask == TAG_ATM_MASK)
+    codep = c_atm;
+  else if (tag_mask == TAG_LST_MASK)
+    codep = c_lst;
+  else if (tag_mask == TAG_STC_MASK)
+    codep = c_stc;
+  else
+    codep = c_var;
+
+  return codep ? codep : ALTB(B);
+}
+
+
+
+
 CodePtr FC
 Pl_Switch_On_Term_Var_Atm(CodePtr c_var, CodePtr c_atm)
 {
@@ -1254,6 +1339,23 @@ PlLong FC
 Pl_Switch_On_Integer_For_Dichotomy(void)
 {
   return UnTag_INT(A(0));
+}
+
+
+
+
+/* Float switch is reached only after switch_on_term_flt dereferences A(0). */
+CodePtr FC
+Pl_Switch_On_Float(FltSwtTbl t, int size)
+{
+  double key = Pl_Obtain_Float(UnTag_FLT(A(0)));
+  FltSwtInf *swt;
+
+  if (key != key)              /* never match a NaN head */
+    return ALTB(B);
+
+  swt = Locate_Flt_Swt_Element(t, size, key);
+  return swt->codep ? swt->codep : ALTB(B);
 }
 
 

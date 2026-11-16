@@ -129,6 +129,7 @@ typedef struct swt_elt
 {
   struct map_entry *atom;
   PlLong n;
+  double flt;
   int label;
 }
 SwtElt;
@@ -146,7 +147,9 @@ typedef struct swt_tbl
 #ifndef SWT_INT_DICHOTOMY
     TBL_INT,			/* key: n */
 #endif
-    TBL_STC			/* key: atom/n */
+    TBL_STC,			/* key: atom/n */
+    TBL_FLT,			/* key: floating-point number */
+    TBL_NB			/* number of switch-table types */
   }
   type;
   int tbl_no;			/* sequential no of the table */
@@ -170,7 +173,7 @@ typedef struct predinf
   int prop;
   struct map_entry *pl_file;
   int pl_line;
-  SwtTbl *swt_tbl[3];
+  SwtTbl *swt_tbl[TBL_NB];
   PredP next;
 }
 Pred;
@@ -575,9 +578,7 @@ F_predicate(ArgVal arg[])
   cur_pred->pl_file = cur_pl_file;
   cur_pred->pl_line = (int) pl_line;
   cur_pred->prop = prop;
-  cur_pred->swt_tbl[0] = NULL;
-  cur_pred->swt_tbl[1] = NULL;
-  cur_pred->swt_tbl[2] = NULL;
+  memset(cur_pred->swt_tbl, 0, sizeof(cur_pred->swt_tbl));
   cur_pred->next = NULL;
 
   pred_end->next = cur_pred;
@@ -1327,6 +1328,30 @@ F_switch_on_term(ArgVal arg[])
 }
 
 
+/* The original switch_on_term/5 remains ABI-compatible for existing WAM. */
+void
+F_switch_on_term_flt(ArgVal arg[])
+{
+  Args0;
+  DEF_C_INT(val_label);
+  static char l[6][MAX_LABEL_LENGTH];
+  int i;
+
+  for (i = 0; i < 6; i++)
+    {
+      LOAD_C_INT(val_label);
+      if (val_label == -1)
+        strcpy(l[i], "0");
+      else
+        sprintf(l[i], "&" FORMAT_LABEL(val_label));
+    }
+
+  Inst_Printf("call_c", FAST "Pl_Switch_On_Term_Flt(%s,%s,%s,%s,%s,%s)",
+              l[0], l[1], l[2], l[3], l[4], l[5]);
+  Inst_Printf("jump_ret", "");
+}
+
+
 
 
 /*-------------------------------------------------------------------------*
@@ -1444,6 +1469,37 @@ F_switch_on_integer(ArgVal arg[])
     }
   fprintf(file_out, ")\n");
 #endif
+}
+
+
+
+
+/*-------------------------------------------------------------------------*
+ * F_SWITCH_ON_FLOAT                                                       *
+ *                                                                         *
+ *-------------------------------------------------------------------------*/
+void
+F_switch_on_float(ArgVal arg[])
+{
+  SwtTbl *t;
+  SwtElt *elem;
+
+  DEF_FLOAT(n);
+  DEF_C_INT(label);
+  Args1(C_INT(nb_elem));
+
+  t = Create_Switch_Table(TBL_FLT, nb_elem);
+  for (elem = t->elem; nb_elem--; elem++)
+    {
+      LOAD_FLOAT(n);
+      LOAD_C_INT(label);
+      elem->flt = n;
+      elem->label = label;
+    }
+
+  Inst_Printf("call_c", FAST "Pl_Switch_On_Float(st(%d),%d)",
+              nb_swt_tbl - 1, t->nb_elem);
+  Inst_Printf("jump_ret", "");
 }
 
 
@@ -2079,10 +2135,13 @@ Emit_Unit_Initializer(void)
 
       cur_pred_no++;		/* for FORMAT_LABEL */
 
-      for (i = 0; i < 3; i++)
+      for (i = 0; i < TBL_NB; i++)
 	for (t = p->swt_tbl[i]; t != NULL; t = t->next)
 	  {
-	    Inst_Printf("call_c", FAST "Pl_Create_Swt_Table(%d)", t->nb_elem);
+	    if (i == TBL_FLT)
+	      Inst_Printf("call_c", FAST "Pl_Create_Flt_Swt_Table(%d)", t->nb_elem);
+	    else
+	      Inst_Printf("call_c", FAST "Pl_Create_Swt_Table(%d)", t->nb_elem);
 	    Inst_Printf("move_ret", "st(%d)", t->tbl_no);
 
 	    switch (i)
@@ -2108,6 +2167,16 @@ Emit_Unit_Initializer(void)
 		  }
 		break;
 #endif
+
+	      case TBL_FLT:
+		for (j = 0; j < t->nb_elem; j++)
+		  {
+		    sprintf(l, FORMAT_LABEL(t->elem[j].label));
+		    Inst_Printf("call_c", FAST
+				"Pl_Create_Swt_Flt_Element(st(%d),%d,%1.20e,&%s)",
+				t->tbl_no, t->nb_elem, t->elem[j].flt, l);
+		  }
+		break;
 
 	      default:
 		for (j = 0; j < t->nb_elem; j++)

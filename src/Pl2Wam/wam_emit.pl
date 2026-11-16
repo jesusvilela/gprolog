@@ -66,8 +66,10 @@
  * label(L)                                                                *
  *                                                                         *
  * switch_on_term(Lvar, Latm, Lint, Llst, Lstc)                            *
+ * switch_on_term_flt(Lvar, Latm, Lint, Lflt, Llst, Lstc)                  *
  * switch_on_atom([(F,L),...])                                             *
  * switch_on_integer([(N,L),...])                                          *
+ * switch_on_float([(D,L),...])                                            *
  * switch_on_structure([(F/N,L),...])                                      *
  *                                                                         *
  * try_me_else(L)                           try(L)                         *
