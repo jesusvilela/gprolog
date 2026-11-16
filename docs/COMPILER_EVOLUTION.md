@@ -103,5 +103,36 @@ indexing; dynamic predicates, multi-argument indexing and JIT are excluded.
 
 Run `python3 tests/float_indexing/run.py --bin-dir ./bin` after an
 in-place build. Then run `cd src && make check && make check-e && make check-i`.
-These are acceptance gates, not a performance claim. Until all pass on the
-exact branch commit, this slice must stay draft.
+These are acceptance gates, not a performance claim.
+
+### Evidence and bootstrap provenance (16 November 2026)
+
+- A fresh single-pass checkout build, not an artificial file-touch rebuild,
+  passed Ubuntu 24.04 CI in
+  [Actions run 43896491891](https://github.com/jesusvilela/gprolog/actions/runs/43896491891)
+  for commit `97d5e1027600ebc89ebb3e4ced9ee39ab8db2c6a`.
+- The runner inspects emitted WAM: static float predicates use both
+  `switch_on_term_flt/6` and `switch_on_float/1`, while a float-free
+  comparator retains historical `switch_on_term/5`.
+- 13 semantic checks passed in **each** of native and consulted paths,
+  including duplicate keys, wildcard fallbacks, signed zeros, cuts,
+  side-effect order, and variable calls; the parent goal-expansion suite
+  passed its 29 checks in each path.
+- Native, emulated, and interpreted fixed-point bootstrap checks passed.
+  Generated `first_arg.wam`, `indexing.wam`, and `wam_emit.wam`
+  are committed in the feature branch and synchronized with their sources.
+
+Two earlier failures were diagnostic, not a reason to weaken requirements:
+the original tests reused a bound `L` variable between calls inside
+`main/0`, and initial CI silently reused stale checked-in WAM artifacts.
+Each test is now isolated into its own predicate; CI now tests the actual
+generated float instructions and verifies a regular source checkout.
+
+**What this does not establish:** no old-versus-new compiler benchmark has
+yet measured speed, memory, or compilation overhead; this small test suite
+is not a complete ISO conformance proof or independent cross-platform
+replication. PR #2 remains draft pending performance evidence and review.
+The next bounded benchmark should compare this head against the historical
+goal-expansion-only compiler on identical static float workloads with
+predeclared query distributions, repeated runs, and cold/warm conditions.
+Variable-call behavior and mixed-type workloads remain negative controls.
