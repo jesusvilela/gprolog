@@ -1,0 +1,210 @@
+                                GNU PROLOG
+                                ==========
+
+INTRODUCTION
+************
+
+GNU Prolog is a native Prolog compiler with constraint solving over finite
+domains (FD) developed by Daniel Diaz (http://cri-dist.univ-paris1.fr/diaz/)
+Lastest information can be found at www.gprolog.org.
+
+A lot of work has been devoted to the ISO compatibility. GNU Prolog is very
+close to the ISO standard.
+
+Here are some features of GNU Prolog:
+
+Prolog system:
+
+   - conforms to the ISO standard for Prolog (integer/floating arithmetic,
+     streams, dynamic code, exceptions).
+   - clause indexing.
+   - a lot of extensions: global variables, definite clause grammars (DCG),
+     sockets interface, operating system interface,...
+   - more than 300 Prolog built-in predicates.
+   - Prolog debugger and a low-level WAM debugger.
+   - line editing facility under the interactive interpreter with completion
+     on atoms.
+   - powerful bidirectional interface between Prolog and C.
+
+Compiler:
+
+   - native-code compiler producing stand alone executables.
+   - simple command-line compiler accepting a wide variety of files:
+     Prolog files, C files, WAM files,...
+   - direct generation of assembly code 15 times faster than wamcc + gcc.
+   - most unused built-in predicates are not linked (to reduce the size
+     of the executables).
+   - compiled predicates (native-code) as fast as wamcc on average.
+   - consulted predicates (byte-code) 5 times faster than wamcc.
+
+Constraint solver:
+
+   - very efficient FD solver (comparable to commercial solvers).
+   - FD variables well integrated into the Prolog environment (full
+     compatibility with Prolog variables and integers).
+   - no need for explicit FD declarations.
+   - high-level constraints can be described in terms of simple primitives.
+   - a lot of predefined constraints: arithmetic constraints, boolean
+     constraints, symbolic constraints, reified constraints,...
+   - several predefined enumeration heuristics.
+   - the user can define his own new constraints.
+   - more than 50 FD built-in constraints/predicates.
+
+
+
+PORTS
+*****
+
+GNU Prolog is currently ported to the following architectures:
+
+   - ix86 / GNU/Linux
+   - ix86 / Win32
+   - ix86 / SCO
+   - ix86 / Solaris
+   - ix86 / FreeBSD
+   - ix86 / OpenBSD
+   - ix86 / NetBSD
+   - ix86 / Darwin (Mac OS X)
+   - x86_64 / GNU/Linux
+   - x86_64 / Solaris
+   - x86_64 / Win64
+   - x86_64 / Darwin (Mac OS X)
+   - PowerPC / GNU/Linux
+   - PowerPC / Darwin (Mac OS X)
+   - PowerPC / NetBSD
+   - sparc / SunOS (4.1.3 or higher)
+   - sparc / Solaris
+   - sparc / NetBSD
+   - sparc64 / Solaris
+   - sparc64 / OpenBSD
+   - alpha / GNU/Linux
+   - alpha / OSF1
+   - mips / irix
+   - arm 32bits (armv6, armv7) / GNU/Linux
+   - arm 64bits aka. aarch64 (armv8) / GNU/Linux
+   - arm 64bits aka. aarch64 (armv8) / Darwin (Mac OS X)
+   - arm 64bits aka. aarch64 (armv8) / Win64
+   - RISC-V 64bits / GNU/Linux
+
+
+
+INSTALLATION
+************
+
+Please refer to the INSTALL file (in the same directory)
+
+
+
+USING GNU PROLOG
+****************
+
+Be sure that appropriate environment variables are set (see INSTALL)
+
+You can then invoke the top-level using:
+
+	gprolog
+
+and the compiler using:
+
+	gplc FILE
+
+The simplest way to compile a Prolog file 'prog.pl' is then:
+
+	gplc prog.pl
+
+which will produce the executable called prog (use gplc --help to have a
+brief overview of available options).
+
+Refer to the documentation for more information (see below).
+
+
+
+WINDOWS
+*******
+
+In Microsoft Windows if you intend to use the gplc compiler as described in
+the documentation ensure that the following conditions are met:
+
+   - for the port compiled with Microsoft Visual C++ (aka MSVC++)
+     you need Microsoft Visual Studio (tested on version 2026 Community).
+
+   - for the ports compiled via Msys, install Msys and needed toochain.
+
+See src/WINDOWS for more information.
+
+Observing these needs you will also be able to do the mixed
+language programming, as in the examples included in the ExamplesC
+directory. However you'll need to write your own Makefile as the one
+provided is for gplc calling 'gcc' and the options passed by GNU
+Prolog will not work (see file ExamplesC/README).
+
+
+
+DOCUMENTATION
+*************
+
+The directory doc contains various versions of the manual. Refer to the
+file doc/README for more information.
+
+An in-line HTML version can be accessed from the GNU Prolog web page.
+
+
+
+WEB
+***
+
+The GNU Prolog web site is: http://www.gprolog.org/
+
+
+
+MAILING LIST
+************
+
+To communicate with other GNU Prolog users and/or implementors send an email to
+users-prolog@gnu.org. To (un)subscribe to this mailing list send an email to
+users-prolog-request@gnu.org with (un)subscribe in the subject line.
+
+
+
+BUGS
+****
+
+The recommended modern way to track bugs and ongoing development is to use
+GitHub issues: https://github.com/didoudiaz/gprolog/issues.
+
+Bugs can still be reported via the traditional GNU address: bug-prolog@gnu.org.
+To (un)subscribe to this mailing list send an email to
+bug-prolog-request@gnu.org with (un)subscribe in the subject line.
+
+
+
+COPYING
+*******
+
+GNU Prolog is free software. Since version 1.4.0, GNU Prolog is distributed
+under a dual license: LGPL or GPL. So, you can redistribute it and/or modify
+it under the terms of either:
+
+  * the GNU Lesser General Public License (LGPL) as published by the Free
+    Software Foundation; either version 3 of the License, or (at your option)
+    any later version.
+
+or 
+
+  * the GNU General Public License (GPL) as published by the Free Software
+    Foundation; either version 2 of the License, or (at your option) any
+    later version.  
+
+or both in parallel (as here).
+
+GNU Prolog is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+You should have received copies of the GNU General Public License and the GNU
+Lesser General Public License along with this program. If not, see
+http://www.gnu.org/licenses/.
+
+Remark: versions of GNU Prolog prior to 1.4.0 were entirely released under
+the GNU General Public License (GPL).
+
