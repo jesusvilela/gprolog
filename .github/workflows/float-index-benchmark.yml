@@ -3,6 +3,11 @@ name: Float indexing matched benchmark
 on:
   push:
     branches: ['feature/float-indexing']
+    paths:
+      - 'src/Pl2Wam/**'
+      - 'src/EnginePl/**'
+      - 'src/Wam2Ma/**'
+      - 'tests/float_indexing/benchmark.py'
   workflow_dispatch:
 
 permissions:

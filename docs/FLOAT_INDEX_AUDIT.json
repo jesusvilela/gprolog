@@ -1,0 +1,222 @@
+{
+  "task_id": "gprolog-float-indexing-paired-2026-11-16",
+  "claim": {
+    "text": "New static first-argument float indexing improves native GNU Prolog execution time by at least 10% on a predetermined uniformly distributed 128-float-key synthetic workload relative to goal-expansion-only baseline.",
+    "scope": "GNU Prolog fork; Ubuntu 24.04 x86-64; compiled static first-argument float clauses; fixed synthetic generator.",
+    "status_before": "H",
+    "assumptions": [
+      "No broad speed claim",
+      "Both versions built with same configure/make/install settings on same runner",
+      "Source equality via SHA-256",
+      "Semantic answer checks are necessary but not exhaustive."
+    ],
+    "forbidden_promotions": [
+      "No universal GNU Prolog speedup",
+      "No independent cross-platform replication",
+      "No 32-bit or NaN semantics certification",
+      "No ISO conformance proof"
+    ]
+  },
+  "specification": {
+    "intended_object": "Matched paired comparison of native execution time for old vs new compiler on identical source programs",
+    "invariants": [
+      "Native analytical output equal",
+      "WAM float switch only in candidate where float facts present",
+      "Atom-only control remains historical instruction",
+      "Same build flags and runner for both versions"
+    ],
+    "known_answer_cases": [
+      "128 float fact hits",
+      "128 float fact misses",
+      "128 atom-only negative control",
+      "Mixed 96 float + 16 atom + 16 integer facts",
+      "Variable-headed calls"
+    ]
+  },
+  "implementation": {
+    "artifact": "tests/float_indexing/benchmark.py and .github/workflows/float-index-benchmark.yml",
+    "commit": "a1098e229ff83a3d2004b5edcb6b5a86299a55ed",
+    "environment": "GitHub ubuntu-24.04 x86-64; 4 CPUs visible; Python 3.12.3",
+    "live_entrypoint": "python3 candidate/tests/float_indexing/benchmark.py ... (workflow run 43898849916)",
+    "representation": "Generated native Prolog fixtures, WAM inspection, compiled binaries, perf_counter_ns wall time, GNU time peak RSS"
+  },
+  "metric": {
+    "name": "Paired baseline/candidate wall-time speedup",
+    "type": "distribution",
+    "units": "dimensionless ratio of wall seconds",
+    "direction": "higher_is_better",
+    "raw_before_clipping": true,
+    "semantic_invariance_claimed": true,
+    "equivalence_attacks": [
+      "Float-free atom predicate in both compilers",
+      "Unbound first argument enumeration",
+      "Mixed float/integer/atom dispatch",
+      "Same generator and source SHA-256",
+      "Alternate candidate/baseline order"
+    ]
+  },
+  "tests": {
+    "black_box": [
+      "Analytical expected total for every executed workload",
+      "Float indexing 13 native and 13 consulted tests on PR2"
+    ],
+    "structural": [
+      "Inspect generated WAM for switch_on_term_flt and switch_on_float",
+      "Inspect float-free WAM for historical switch_on_term"
+    ],
+    "property_based": [
+      "Deterministically generated permuted keys; no broad property-based guarantee"
+    ],
+    "metamorphic": [
+      "Float-free control expected unchanged",
+      "Variable-call control expected unchanged"
+    ],
+    "fuzzing": [
+      "not applicable: no adversarial fuzz campaign conducted"
+    ],
+    "historical": [
+      "Goal expansion 29 semantic checks per native and consulted path",
+      "Native/emulated/interpreted bootstrap checks"
+    ]
+  },
+  "controls": {
+    "matched_baselines": [
+      "12b4284378a59098b9004fe2b454ad9c19536370 fixed baseline"
+    ],
+    "negative_controls": [
+      "atom_control ratio 1.015x",
+      "variable_control ratio 0.999x"
+    ],
+    "compute_parity": "Both builds same runner and configure/make/install; compiler feature is intended difference",
+    "parameter_parity": "Same input source and compile flags; resulting code sizes may differ",
+    "sampling_parity": "Seven alternating-order pairs, identical query schedule from seed 20261116, warmup before timing",
+    "data_access_parity": "Identical generated source bytes SHA-256 verified, same runner OS"
+  },
+  "preregistration": {
+    "prediction": "Candidate median baseline/candidate ratio at least 1.10 on float_uniform; atom-only control within 0.85..1.15",
+    "primary_metric": "Median of seven paired baseline/candidate native wall time ratios on float_uniform",
+    "uncertainty_method": "2,000 seeded paired bootstrap resamples; descriptive within-run only",
+    "kill_condition": "Any answer mismatch, missing float WAM dispatch, primary median <1.10, bootstrap low <=1.0, or atom control outside parity band",
+    "stop_condition": "Do not generalize from synthetic measurements; additional scope requires real-workload and independent execution",
+    "promotion_rule": "Only bounded M if all correctness, dispatch and preregistered gates pass; no general speed claim"
+  },
+  "evidence": {
+    "primary_sources": [
+      "https://github.com/jesusvilela/gprolog/pull/2",
+      "https://github.com/jesusvilela/gprolog/actions/runs/43898849916"
+    ],
+    "execution_records": [
+      "GitHub Actions 43898849916 completed success; raw artifact 14241261189, retained 30 days",
+      "Primary baseline median 0.559387337 s, candidate median 0.078323457 s; median paired ratio 7.221948444",
+      "Atom control ratio 1.015221595; variable control ratio 0.999002359"
+    ],
+    "independent_witnesses": [],
+    "claim_to_artifact_map": [
+      "Performance statement -> raw paired benchmark artifact and source program generator",
+      "Semantic correctness -> analytical totals and PR2 regression tests",
+      "WAM dispatch -> generated WAM inspection gates",
+      "Resource cost -> compile timing, native file sizes, peak RSS records"
+    ]
+  },
+  "round_trip": {
+    "edges": [
+      {
+        "from": "requirement",
+        "to": "formal specification",
+        "preserved": [
+          "bounded 10% speedup hypothesis"
+        ],
+        "transformed": [
+          "generic indexing question narrowed to float_uniform synthetic workload"
+        ],
+        "lost": [
+          "real-world workload coverage"
+        ],
+        "remainder": [
+          "generalizability"
+        ]
+      },
+      {
+        "from": "formal specification",
+        "to": "implementation",
+        "preserved": [
+          "same source and parity controls"
+        ],
+        "transformed": [
+          "native compiled microbench fixtures"
+        ],
+        "lost": [
+          "full application environment"
+        ],
+        "remainder": [
+          "source distribution bias"
+        ]
+      },
+      {
+        "from": "implementation",
+        "to": "test and measurement",
+        "preserved": [
+          "exact version refs and output validation"
+        ],
+        "transformed": [
+          "seven paired runtime observations"
+        ],
+        "lost": [
+          "independence across machines"
+        ],
+        "remainder": [
+          "host variance"
+        ]
+      },
+      {
+        "from": "test and measurement",
+        "to": "interpretation",
+        "preserved": [
+          "7.222x synthetic gain with atom control 1.015x"
+        ],
+        "transformed": [
+          "bounded empirical improvement"
+        ],
+        "lost": [
+          "scope outside synthetic suite"
+        ],
+        "remainder": [
+          "cross-host replication"
+        ]
+      },
+      {
+        "from": "interpretation",
+        "to": "requirement",
+        "preserved": [
+          "primary 10% gate passed"
+        ],
+        "transformed": [
+          "measured synthetic effect only"
+        ],
+        "lost": [
+          "universal benefit"
+        ],
+        "remainder": [
+          "real application benchmark"
+        ]
+      }
+    ]
+  },
+  "result": {
+    "observed": "Uniform float synthetic workload showed 7.222x median paired speedup; atom-only and variable controls approximately 1x",
+    "effect_size": "Paired median ratio 7.221948444; within-run percentile bootstrap [7.13286,7.27431]",
+    "uncertainty": "Seven correlated pairs on one shared virtual runner; bootstrap not cross-host interval",
+    "status_after": "M",
+    "retired_claims": [
+      "Early findall failure was a compiler defect (fixture binding error)",
+      "Stale checked-in WAM compilation proves new dispatch",
+      "Any universal Prolog speedup inference from this synthetic suite"
+    ],
+    "active_remainder": [
+      "Independent cross-platform replication",
+      "Real application-derived workload",
+      "32-bit and unusual float semantic properties",
+      "Potential precision or code-size tradeoffs"
+    ]
+  }
+}
