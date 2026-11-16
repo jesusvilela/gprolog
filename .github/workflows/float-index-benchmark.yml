@@ -1,0 +1,63 @@
+name: Float indexing matched benchmark
+
+on:
+  push:
+    branches: ['feature/float-indexing']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  paired-baseline:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Checkout fixed goal-expansion baseline
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: jesusvilela/gprolog
+          ref: 12b4284378a59098b9004fe2b454ad9c19536370
+          path: baseline
+          persist-credentials: false
+      - name: Checkout candidate commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          path: candidate
+          persist-credentials: false
+      - name: Build baseline
+        working-directory: baseline/src
+        run: |
+          ./configure --with-install-dir=in-place
+          make
+          make install
+      - name: Build candidate
+        working-directory: candidate/src
+        run: |
+          ./configure --with-install-dir=in-place
+          make
+          make install
+      - name: Host and toolchain provenance
+        run: |
+          uname -a
+          gcc --version | head -n 1
+          python3 --version
+          git -C baseline rev-parse HEAD
+          git -C candidate rev-parse HEAD
+      - name: Matched source, compilation and runtime benchmark
+        run: |
+          python3 candidate/tests/float_indexing/benchmark.py \
+            --baseline-bin "$PWD/baseline/bin" \
+            --candidate-bin "$PWD/candidate/bin" \
+            --baseline-ref "$(git -C baseline rev-parse HEAD)" \
+            --candidate-ref "$(git -C candidate rev-parse HEAD)" \
+            --samples 7 --warmups 1 --loops 12000 \
+            --output "$PWD/float-index-benchmark.json"
+      - name: Retain raw paired observations
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: float-index-paired-observations
+          path: float-index-benchmark.json
+          if-no-files-found: warn
+          retention-days: 30
