@@ -10,6 +10,7 @@ on:
       - 'src/Wam2Ma/wam2ma.c'
       - 'src/Pl2Wam/indexing.pl'
       - 'tests/float_indexing/differential.py'
+      - 'tests/float_indexing/collision_oracle.py'
   workflow_dispatch:
 
 permissions:
@@ -67,11 +68,19 @@ jobs:
             --baseline-bin "$PWD/baseline/bin" \
             --candidate-bin "$PWD/candidate/bin" \
             --output "$PWD/float-index-i686-differential.json"
+      - name: Deliberate float-hash collisions on ELF32
+        run: |
+          python3 candidate/tests/float_indexing/collision_oracle.py \
+            --baseline-bin "$PWD/baseline/bin" \
+            --candidate-bin "$PWD/candidate/bin" \
+            --output "$PWD/float-index-i686-collisions.json"
       - name: Retain i686 semantic evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: float-index-i686-oracle
-          path: float-index-i686-differential.json
+          path: |
+            float-index-i686-differential.json
+            float-index-i686-collisions.json
           if-no-files-found: warn
           retention-days: 30

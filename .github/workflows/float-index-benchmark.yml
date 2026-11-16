@@ -9,6 +9,7 @@ on:
       - 'src/Wam2Ma/**'
       - 'tests/float_indexing/benchmark.py'
       - 'tests/float_indexing/differential.py'
+      - 'tests/float_indexing/collision_oracle.py'
   workflow_dispatch:
 
 permissions:
@@ -56,6 +57,12 @@ jobs:
             --baseline-bin "$PWD/baseline/bin" \
             --candidate-bin "$PWD/candidate/bin" \
             --output "$PWD/float-index-differential.json"
+      - name: Deliberate float-hash collisions and wraparound oracle
+        run: |
+          python3 candidate/tests/float_indexing/collision_oracle.py \
+            --baseline-bin "$PWD/baseline/bin" \
+            --candidate-bin "$PWD/candidate/bin" \
+            --output "$PWD/float-index-collisions.json"
       - name: Matched source, compilation and runtime benchmark
         run: |
           python3 candidate/tests/float_indexing/benchmark.py \
@@ -73,5 +80,6 @@ jobs:
           path: |
             float-index-benchmark.json
             float-index-differential.json
+            float-index-collisions.json
           if-no-files-found: warn
           retention-days: 30
