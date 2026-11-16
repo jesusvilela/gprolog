@@ -1,0 +1,77 @@
+name: Float indexing i686 ABI differential
+
+on:
+  push:
+    branches: ['feature/float-indexing']
+    paths:
+      - '.github/workflows/float-index-abi32.yml'
+      - 'src/EnginePl/wam_inst.c'
+      - 'src/EnginePl/wam_inst.h'
+      - 'src/Wam2Ma/wam2ma.c'
+      - 'src/Pl2Wam/indexing.pl'
+      - 'tests/float_indexing/differential.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  i686-differential:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout fixed historical compiler
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: jesusvilela/gprolog
+          ref: 12b4284378a59098b9004fe2b454ad9c19536370
+          path: baseline
+          persist-credentials: false
+      - name: Checkout candidate compiler
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          path: candidate
+          persist-credentials: false
+      - name: Install and verify i686 multilib toolchain
+        run: |
+          sudo apt-get update -qq
+          sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y gcc-multilib libc6-dev-i386
+          printf 'int main(void) { return 0; }\n' | gcc -m32 -x c - -o /tmp/gprolog-check-i686
+          file /tmp/gprolog-check-i686
+          readelf -h /tmp/gprolog-check-i686 | grep -E 'Class:.*ELF32'
+          /tmp/gprolog-check-i686
+      - name: Build historical compiler for i686
+        working-directory: baseline/src
+        run: |
+          CC='gcc -m32' CFLAGS='-O3 -fomit-frame-pointer -m32' LDFLAGS='-m32' \
+            ./configure --host=i686-pc-linux-gnu --with-install-dir=in-place
+          make
+          make install
+      - name: Build float-index compiler for i686
+        working-directory: candidate/src
+        run: |
+          CC='gcc -m32' CFLAGS='-O3 -fomit-frame-pointer -m32' LDFLAGS='-m32' \
+            ./configure --host=i686-pc-linux-gnu --with-install-dir=in-place
+          make
+          make install
+      - name: Verify both compilers are genuinely 32-bit ELF
+        run: |
+          file baseline/bin/gprolog candidate/bin/gprolog
+          readelf -h baseline/bin/gprolog | grep -E 'Class:.*ELF32'
+          readelf -h candidate/bin/gprolog | grep -E 'Class:.*ELF32'
+          readelf -h baseline/bin/gplc | grep -E 'Class:.*ELF32'
+          readelf -h candidate/bin/gplc | grep -E 'Class:.*ELF32'
+      - name: Independent boundary-float differential oracle on i686
+        run: |
+          python3 candidate/tests/float_indexing/differential.py \
+            --baseline-bin "$PWD/baseline/bin" \
+            --candidate-bin "$PWD/candidate/bin" \
+            --output "$PWD/float-index-i686-differential.json"
+      - name: Retain i686 semantic evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: float-index-i686-oracle
+          path: float-index-i686-differential.json
+          if-no-files-found: warn
+          retention-days: 30
