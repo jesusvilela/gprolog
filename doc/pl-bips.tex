@@ -6036,8 +6036,9 @@ The GNU Prolog compiler \RefSP{The-GNU-Prolog-compiler} automatically calls
 \IdxK{pl2wam} options and directives can be necessary
 \RefSP{pl2wam-description}. Basically, it is necesary to inform the Prolog to
 WAM compiler that a predicate must be \Idx{embeded} in its internal state (so it
-can be executed during term expansion). By default, only
-\texttt{term\_expansion/2} clauses are implicitely embeded. All other predicates
+can be executed during term expansion). By default,
+\texttt{term\_expansion/2} and \texttt{goal\_expansion/2} clauses are implicitly
+embedded. All other predicates
 (directly or indirectly) called by \texttt{term\_expansion/2} must be declared
 as embeded. This can be done with \IdxDi{compiler\_modes/1} directive. Here is
 an example of \texttt{term\_expansion} calling an auxiliary predicate
@@ -6096,6 +6097,47 @@ Any error which can occur when invoking \texttt{call(term\_expansion(Term1,
 \Portability
 
 GNU Prolog predicate.
+
+\subsubsection{\IdxPBD{expand\_goal/2},
+               \IdxPBD{goal\_expansion/2}}
+
+\begin{TemplatesOneCol}
+expand\_goal(?term, ?term)\\
+goal\_expansion(+callable\_term, -term)
+\end{TemplatesOneCol}
+
+\Description
+
+\texttt{expand\_goal(Goal, Expanded)} applies the first successful
+\texttt{goal\_expansion/2} hook and follows rewrites until unchanged or a
+previously visited goal is reached. Variables are unchanged. The procedure
+recurses into conjunction, disjunction, hard and soft conditionals, negation,
+\texttt{call/1}, \texttt{once/1}, and the goal and recovery arguments of
+\texttt{catch/3}. Ordinary predicate arguments are not traversed.
+
+The compiler applies goal expansion to clause bodies after term and DCG
+expansion, for both native code and consulted code. Hook definitions themselves
+are not goal-expanded. Hook clauses are implicitly embedded, like
+\texttt{term\_expansion/2}; helpers require an appropriate
+\texttt{compiler\_mode/1}. Directives, initialization goals and arbitrary
+meta-predicate arguments are not expanded by this mechanism.
+
+For example, \texttt{goal\_expansion(square(X,Y), (Y is X*X)).} replaces
+a literal \texttt{square/2} call in a subsequent clause by arithmetic.
+The author must ensure that the transformation preserves the intended semantics.
+Finite cycles and repeated wrapping are stopped by ancestor identity; hooks
+generating infinitely many distinct goals may still diverge.
+
+\Errors
+
+Exceptions raised by the hook are propagated. A successful hook that
+instantiates or aliases input variables raises
+\texttt{permission\_error(modify, goal\_expansion\_input, Goal)}.
+
+\Portability
+
+GNU Prolog extension in this fork, inspired by a subset of SWI-Prolog goal
+expansion. No module-aware or arbitrary meta-predicate expansion is provided.
 
 \subsubsection{\IdxPBD{phrase/3},
                \IdxPBD{phrase/2}}

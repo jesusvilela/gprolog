@@ -26,6 +26,9 @@ TMP
 *.obj
 *.so
 *.po
+.agent/
+tests/goal_expansion/results.json
+__pycache__/
 *.BAK
 .#*
 #*#

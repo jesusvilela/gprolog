@@ -236,6 +236,12 @@ write_default_include_file(IncludeFile) :-
 	    true
 	),
 		%%% end of term_expansion/2 inclusion %%%
+	format(S, ':- discontiguous(goal_expansion/2).~n', []),
+	(   GoalHead = goal_expansion(_, _),
+	    catch(('$clause'(GoalHead, GoalBody, 2), portray_clause(S, (GoalHead :- GoalBody)), fail), _, fail)
+	;
+	    true
+	),
 	format(S, ':- compiler_mode(default).~n', []),
 	close(S),
 	fail.			% GC
