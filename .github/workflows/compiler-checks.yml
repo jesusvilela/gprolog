@@ -40,3 +40,10 @@ jobs:
       - name: Interpreted bootstrap
         working-directory: src
         run: make check-i
+      - name: Export verified WAM bootstrap files for synchronization
+        run: |
+          for stem in first_arg indexing wam_emit; do
+            printf 'WAM_BOOTSTRAP_B64_%s=' "$stem"
+            base64 -w0 "src/Pl2Wam/$stem.wam"
+            printf '\n'
+          done
