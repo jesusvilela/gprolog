@@ -32,7 +32,7 @@ SAMPLES = (
 REGIMES = (
     ("c_environment", "C", False),
     ("de_environment_only", COMMA, False),
-    ("de_forced_after_start", COMMA, True),
+    ("de_forced_at_source_token", COMMA, True),
 )
 
 
@@ -43,18 +43,13 @@ def substitute_once(source, old, replacement, what):
     return source.replace(old, replacement)
 
 
-def instrument(engine_path, lexer_path):
-    e = engine_path.read_text(encoding="utf-8")
-    e = substitute_once(e, "  Set_Locale();\n", """  Set_Locale();
-  /* TEST ONLY: simulate a host library changing LC_NUMERIC after startup. */
-  {
-    const char *forced = getenv("GPROLOG_AUDIT_POSTINIT_NUMERIC");
-    if (forced && forced[0] && !setlocale(LC_NUMERIC, forced))
-      abort();
-  }
-""", "engine Set_Locale")
-    engine_path.write_text(e, encoding="utf-8")
+def instrument(lexer_path):
+    """Inject change at the actual user numeric token, AFTER ordinary startup.
 
+    Unlike V2's hook immediately after Set_Locale (before full engine init),
+    this mutation executes just before sscanf in Lexer_Number, and only when
+    the recorded source lexeme matches a per-case environment marker.
+    """
     s = lexer_path.read_text(encoding="utf-8")
     s = substitute_once(s, "#include <float.h>",
                            "#include <float.h>\n#include <locale.h>\n#include <stdint.h>",
@@ -64,7 +59,16 @@ def instrument(engine_path, lexer_path):
         '      !(pl_token.float_num <= DBL_MAX && pl_token.float_num >= -DBL_MAX))'
     )
     changed = '''  {
-    int converted = sscanf(pl_token.name, "%lf", &pl_token.float_num);
+    const char *forced = getenv("GPROLOG_AUDIT_POSTINIT_NUMERIC");
+    const char *target = getenv("GPROLOG_AUDIT_MUTATE_TOKEN");
+    int converted;
+    /* TEST ONLY: mutate only while reading the intended source lexeme. */
+    if (forced && forced[0] && target && !strcmp(pl_token.name, target))
+      {
+        if (!setlocale(LC_NUMERIC, forced))
+          abort();
+      }
+    converted = sscanf(pl_token.name, "%lf", &pl_token.float_num);
     const char *trace_name = getenv("GPROLOG_AUDIT_LOCALE_TRACE");
     if (trace_name && trace_name[0])
       {
@@ -73,7 +77,6 @@ def instrument(engine_path, lexer_path):
         memcpy(&raw_bits, &pl_token.float_num, sizeof(raw_bits));
         trace = fopen(trace_name, "a");
         if (!trace) abort();
-        /* Hex INTEGER bits, not locale-sensitive C %a decimal notation. */
         fprintf(trace, "NUM|%s|%s|%s|%016llx|%d\\n",
                 setlocale(LC_NUMERIC, NULL), localeconv()->decimal_point,
                 pl_token.name, (unsigned long long) raw_bits, converted);
@@ -88,8 +91,7 @@ def instrument(engine_path, lexer_path):
         '      err_msg = "finite floating point literal expected here";\n    }\n  }\n\n push_back:',
         "lexical guard close")
     lexer_path.write_text(s, encoding="utf-8")
-    print("Instrumented temporary engine/lexer source only")
-    print("Engine SHA256:", hashlib.sha256(e.encode()).hexdigest())
+    print("Instrumented test-only lexer at user float conversion, not engine startup")
     print("Lexer SHA256:", hashlib.sha256(s.encode()).hexdigest())
 
 
@@ -152,6 +154,7 @@ def verify(bindir, output):
         "normal_startup_failures": [],
         "postinit_invariance_failures": [],
         "harness_errors": [],
+        "postinit_runtime_failures": [],
         "passed_normal_startup": False,
         "postinit_invariance": None,
     }
@@ -176,8 +179,10 @@ def verify(bindir, output):
                 env["LANG"] = envlocale
                 if forced:
                     env[FORCE_ENV] = COMMA
+                    env["GPROLOG_AUDIT_MUTATE_TOKEN"] = token
                 else:
                     env.pop(FORCE_ENV, None)
+                    env.pop("GPROLOG_AUDIT_MUTATE_TOKEN", None)
                 row = {"regime": name, "literal": token,
                        "source_sha256": hashlib.sha256(source.encode()).hexdigest(),
                        "expected_bits": f"{exact_bits(token):016x}", "modes": {}}
@@ -198,7 +203,7 @@ def verify(bindir, output):
                     row["modes"][mode] = {"process": actual, "matched_C_traces": matches}
                     context = f"{name}/{title}/{mode}"
                     if not matches:
-                        report["harness_errors"].append(context + ": missing C lexer witness")
+                        (report["postinit_runtime_failures"] if forced else report["normal_startup_failures"]).append(context + ": missing C lexer witness")
                     else:
                         for x in matches:
                             expected_sep = "," if forced else "."
@@ -219,11 +224,11 @@ def verify(bindir, output):
                                         context + ": normal startup bit mismatch " + x["bits"])
                     stdout = actual["output"]
                     if any(s in stdout.lower() for s in ("segmentation", "bad address:", "sigsegv")):
-                        report["harness_errors"].append(context + ": fatal process error")
+                        (report["postinit_runtime_failures"] if forced else report["normal_startup_failures"]).append(context + ": fatal process error")
                     if actual["exit"] is None:
-                        report["harness_errors"].append(context + ": timed out")
-                    if not forced and actual["exit"] != 0:
-                        report["normal_startup_failures"].append(context + ": command failed")
+                        (report["postinit_runtime_failures"] if forced else report["normal_startup_failures"]).append(context + ": timed out")
+                    if actual["exit"] != 0:
+                        (report["postinit_runtime_failures"] if forced else report["normal_startup_failures"]).append(context + ": command failed")
                     if not forced and mode == "consulted" and stdout != "OK\n":
                         report["normal_startup_failures"].append(context + ": incorrect consulted response")
                     save()
@@ -234,11 +239,12 @@ def verify(bindir, output):
 
     report["passed_normal_startup"] = (
         not report["normal_startup_failures"] and not report["harness_errors"])
-    report["postinit_invariance"] = not report["postinit_invariance_failures"]
+    report["postinit_invariance"] = not report["postinit_invariance_failures"] and not report["postinit_runtime_failures"]
     save()
     print("NORMAL_STARTUP_PASS=", report["passed_normal_startup"],
           "POSTINIT_INVARIANCE=", report["postinit_invariance"],
-          "MUTATION_MISMATCHES=", len(report["postinit_invariance_failures"]))
+          "MUTATION_MISMATCHES=", len(report["postinit_invariance_failures"]),
+          "POSTINIT_RUNTIME_FAILURES=", len(report["postinit_runtime_failures"]))
     print("RAW JSON:", output)
     for message in report["normal_startup_failures"][:18]:
         print("FAIL NORMAL:", message)
@@ -246,6 +252,8 @@ def verify(bindir, output):
         print("FAIL HARNESS:", message)
     for message in report["postinit_invariance_failures"][:18]:
         print("COUNTEREXAMPLE POSTINIT:", message)
+    for message in report["postinit_runtime_failures"][:18]:
+        print("POSTINIT RUNTIME FAILURE:", message)
     if not report["passed_normal_startup"]:
         raise SystemExit(1)
     if report["postinit_invariance"]:
@@ -260,14 +268,13 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="action", required=True)
     a = sub.add_parser("instrument")
-    a.add_argument("--engine", type=Path, required=True)
     a.add_argument("--lexer", type=Path, required=True)
     b = sub.add_parser("verify")
     b.add_argument("--bin-dir", type=Path, required=True)
     b.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     if args.action == "instrument":
-        instrument(args.engine, args.lexer)
+        instrument(args.lexer)
     else:
         verify(args.bin_dir, args.output)
 

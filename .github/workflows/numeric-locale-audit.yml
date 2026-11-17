@@ -43,11 +43,10 @@ jobs:
       - name: Inject test-only C trace and opt-in poststart mutation
         run: |
           python3 tests/float_indexing/numeric_locale_audit.py instrument \
-            --engine src/EnginePl/engine.c \
             --lexer src/BipsPl/lexer_supp.c
           git status --short
           git diff --check
-          git diff --name-only -- src/EnginePl/engine.c src/BipsPl/lexer_supp.c
+          git diff --name-only -- src/BipsPl/lexer_supp.c
       - name: Build ELF64 instrumented compiler
         if: matrix.abi == 'elf64'
         working-directory: src

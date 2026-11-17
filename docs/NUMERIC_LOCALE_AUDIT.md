@@ -124,3 +124,40 @@ actual \`double\` bytes into a 64-bit unsigned integer and emit
 little-endian ELF64/i686 ABIs. The eight decimal lexemes, three
 regimes, exact rational oracle and both claim-level decision
 criteria stay unchanged. No production C source is altered.
+
+
+## Second correction: early-engine hook was not a post-start embedding witness
+
+[CI #44042262835](https://github.com/jesusvilela/gprolog/actions/runs/44042262835)
+used locale-invariant integer traces. Both ELF64 and ELF32 showed zero
+ordinary-startup mismatches across the eight C-environment and eight
+German-environment source/mode pairs. The deliberately forced German
+locale yielded 14 numeric mismatches per ABI (seven of eight lexemes
+in both native compilation and consultation).
+
+Both CI jobs were RED because the harness incorrectly placed eight
+**forced-locale consulted fatal diagnostics** into a shared
+\`harness_errors\` field and thereby set
+\`passed_normal_startup=false\`. The normal-startup cases themselves
+reported zero failures. The observed fatal diagnostics must not be
+silently discounted, but they belong to the adversarial arm.
+
+More importantly, V2 inserted the locale mutation immediately after
+\`Set_Locale()\`, **before full engine initialization**. That is an
+early-initialization stress test, *not* an accurate simulation of
+foreign code mutating the locale after startup. The prior label
+"postinit" was too strong and is retired for V2.
+
+**V3 correction, frozen before new CI:** inject the opt-in German
+locale mutation only inside \`Lexer_Number\` on the specific user
+numeric lexeme being tested, immediately before the actual
+\`sscanf\` call. The engine initialization file is no longer patched.
+The same eight decimal tokens, three regime types, exact bit oracle,
+and two Linux ABI checks are retained.
+
+Report ordinary-startup numeric correctness, intentional mutation
+value differences, and mutation-only runtime failures as **three
+distinct coordinates**. A failed mutated execution must not change
+the startup verdict, but explicitly defeats claims that parsing is
+safe under arbitrary external numeric-locale changes. Any mismatch
+in effective locale is still a harness invalidation.
