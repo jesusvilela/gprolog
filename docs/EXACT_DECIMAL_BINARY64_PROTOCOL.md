@@ -111,3 +111,57 @@ wrong ABI, any parser/lexer regression or runtime crash. A failed event
 hook is a harness problem until its call path is independently shown;
 never rewrite the expected bits to rescue a failure. Keep V1 evidence
 unchanged and label the V2 witness separately.
+
+
+## V2 execution result — 17 November 2026
+
+The original lexer+term [Actions #44035119464](https://github.com/jesusvilela/gprolog/actions/runs/44035119464)
+and the strengthened native-constant
+[Actions #44035648344](https://github.com/jesusvilela/gprolog/actions/runs/44035648344)
+**both passed on ELF64 and i686 ELF32**, exercising all 44 fixed cases
+per ABI with zero reported oracle or semantic mismatches.
+
+**Direct observations from the V2 raw JSON:**
+
+| Observable | ELF64 | i686 ELF32 |
+|---|---:|---:|
+| Frozen decimal inputs | 44 | 44 |
+| Finite inputs accepted in both compiler versions | 39 | 39 |
+| Infinity-rounded inputs rejected by guarded fork | 5 | 5 |
+| Native runtime Pl_Get_Float C events (both versions) | 78 | 78 |
+| C native constant bit mismatches | **0** | **0** |
+| Parser/lexer bit mismatches | **0** | **0** |
+| Incorrect known-answer executions | **0** | **0** |
+
+The C runtime returned 0x8000000000000000 for native negative zero
+in both compiler versions and both ABIs; the exact half-subnormal tie
+rounded to 0x0000000000000000, the exact normal/subnormal tie to
+0x0010000000000000, and the exact overflow midpoint was rejected
+by the finite-range lexer guard. These were *predeclared* before CI.
+
+The historical compiler was **not** rerun on overflowing inputs:
+positive-overflow consultation was previously shown to crash, and
+rerunning that unsafe source provides no new finite-bit comparison.
+
+V2 archived raw JSON:
+- decimal-exact-elf64, GitHub artifact ID 14307187151
+- decimal-exact-elf32, GitHub artifact ID 14306448513
+
+The initial V1 files remain separate:
+- decimal-exact-elf64, artifact ID 14307011908
+- decimal-exact-elf32, artifact ID 14306394345
+
+Each artifact has a 30-day retention period. The full compiler checks
+also passed at the V2 source SHA in
+[Actions #44035731011](https://github.com/jesusvilela/gprolog/actions/runs/44035731011).
+
+**Evidence promotion:** H -> M for 44 exact decimal cases on two tested
+Linux ABIs only. This is project-authored deterministic evidence,
+not independently audited proof of correct rounding for every decimal
+string, every locale, every compiler or every platform.
+
+**Remaining obstruction:** limited corpus and common authoring of
+reference, source instrumentation and test harness. Next bounded
+independent validation should run a different decimal conversion
+implementation/toolchain on a separately managed host, and inspect
+locale-sensitive lexical conversion rather than assuming C locale.

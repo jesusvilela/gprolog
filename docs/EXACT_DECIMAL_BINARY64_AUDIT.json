@@ -32,10 +32,10 @@
     ]
   },
   "implementation": {
-    "artifact": "tests/float_indexing/decimal_exact_oracle.py and .github/workflows/decimal-exact-audit.yml",
-    "commit": "8ee84cd1a1e8afd8a996b6a8617ab65666730fc7",
+    "artifact": "tests/float_indexing/decimal_exact_oracle.py and .github/workflows/decimal-exact-audit.yml; temporary src/EnginePl/wam_inst.c instrumentation only on runner",
+    "commit": "88cf404c3e1e86475f23961e5e4a93e22471dc84",
     "environment": "Ubuntu 24.04 ELF64 and i686 ELF32, two separately built GNU Prolog versions",
-    "live_entrypoint": "Python selftest / instrument / verify",
+    "live_entrypoint": "GitHub Actions #44035648344 V2 ELF64/i686 paired instrumented C lexer+term and native Pl_Get_Float",
     "representation": "Python Fraction exact-rational rounding; C hexadecimal-float lexer and parser trace reconstructed as 64-bit integers"
   },
   "metric": {
@@ -56,11 +56,13 @@
   },
   "tests": {
     "black_box": [
-      "Known-answer Prolog native and consulted execution"
+      "Known-answer Prolog native and consulted execution",
+      "Actual native compiled programs return known-answer outputs; all instrumented native C constants match oracle"
     ],
     "structural": [
       "C lexer %a and Pl_Put_Float %a traced in test-only C builds",
-      "ELF32 / ELF64 headers checked"
+      "ELF32 / ELF64 headers checked",
+      "Test-only native Pl_Get_Float records actual post-WAM-serialization machine constant 64-bit bits on both compiler builds"
     ],
     "property_based": [
       "12 deterministic seeded dyadic cases"
@@ -99,82 +101,154 @@
   "evidence": {
     "primary_sources": [
       "https://github.com/jesusvilela/gprolog/pull/5",
-      "https://github.com/jesusvilela/gprolog/actions/runs/44031708229"
+      "https://github.com/jesusvilela/gprolog/actions/runs/44031708229",
+      "https://github.com/jesusvilela/gprolog/actions/runs/44035119464",
+      "https://github.com/jesusvilela/gprolog/actions/runs/44035648344",
+      "https://github.com/jesusvilela/gprolog/actions/runs/44035731011"
     ],
     "execution_records": [
-      "Local oracle selftest checked known IEEE754 encodings; CI execution initially unverified"
+      "V1 44035119464 passed 44 decimal cases per ABI with lexer and Prolog term C hex float equal to rational oracle (raw artifacts 14307011908,14306394345)",
+      "V2 44035648344 passed both ELF64 and i686 ELF32 with 44 cases, 39 finite and 5 rejected overflow per ABI, ZERO errors",
+      "V2 actual native Pl_Get_Float trace: 78 exact binary64 values/ABI across historical and guarded fork, 0 mismatches, including signed negative zero and long midpoint decimal encodings",
+      "Post-V2 compiler checks 44035731011 passed exact source SHA 88cf404c3e1e86475f23961e5e4a93e22471dc84"
     ],
     "independent_witnesses": [],
     "claim_to_artifact_map": [
       "Oracle bits -> integer-rational Fraction arithmetic",
       "Runtime observed bits -> throwaway C lexer/parser %a traces",
       "Finite compiled/consulted correctness -> fixture answer output",
-      "Historical unsafe overflow -> archived corrected crash audit"
+      "Historical unsafe overflow -> archived corrected crash audit",
+      "Final compiled machine constant equality -> Pl_Get_Float C trace in artifact 14307187151 (ELF64) and 14306448513 (ELF32)"
     ]
   },
   "round_trip": {
     "edges": [
       {
-        "from": "decimal source",
-        "to": "exact rational",
+        "from": "source requirement",
+        "to": "exact rational oracle",
         "preserved": [
-          "mathematical value and sign"
+          "source decimal and sign"
         ],
         "transformed": [
-          "decimal powers to integer numerator/denominator"
+          "numerator/denominator with exact integer arithmetic"
         ],
         "lost": [
-          "formatting except saved source"
+          "token spelling not involved in value"
         ],
         "remainder": [
-          "C locale"
+          "locale effects on actual parser"
         ]
       },
       {
-        "from": "lexer scan",
+        "from": "reference oracle",
+        "to": "predicted binary64 bits",
+        "preserved": [
+          "mathematical round-to-nearest-even with signed zero"
+        ],
+        "transformed": [
+          "64-bit integer encoding"
+        ],
+        "lost": [
+          "NaN payload semantics not tested"
+        ],
+        "remainder": [
+          "non-finite source syntax"
+        ]
+      },
+      {
+        "from": "decimal source text",
+        "to": "instrumented lexer",
+        "preserved": [
+          "actual scanned double as hex float"
+        ],
+        "transformed": [
+          "sscanf decimal parse"
+        ],
+        "lost": [
+          "source spelling is separate trace field"
+        ],
+        "remainder": [
+          "other lexing entrypoints"
+        ]
+      },
+      {
+        "from": "lexical C double",
         "to": "Prolog term",
         "preserved": [
-          "binary64 expected bits"
+          "exact binary64 bits for all observed finite values"
         ],
         "transformed": [
-          "unary minus applied in term construction"
+          "unary minus in parser"
         ],
         "lost": [
-          "other parser entrypoints unmeasured"
+          "other term classes"
         ],
         "remainder": [
-          "other OS/compilers"
+          "off-corpus tokens"
         ]
       },
       {
-        "from": "compiled/consulted runtime",
-        "to": "evidence",
+        "from": "Prolog term",
+        "to": "native compiler and WAM emission",
         "preserved": [
-          "known-answer and C %a trace"
+          "source fact intended value"
         ],
         "transformed": [
-          "hex floats to 64-bit integer equality"
+          "WAM emitted C native constant"
         ],
         "lost": [
-          "unselected real application workloads"
+          "invisible internals of codegen"
         ],
         "remainder": [
-          "external reproduction"
+          "other optimization paths"
+        ]
+      },
+      {
+        "from": "native machine constant",
+        "to": "runtime C trace",
+        "preserved": [
+          "Pl_Get_Float double n actual bits"
+        ],
+        "transformed": [
+          "hex C textual trace parsed to 64-bit integer"
+        ],
+        "lost": [
+          "other runtime instructions not traced"
+        ],
+        "remainder": [
+          "JIT/tabled/dynamic predicates not studied"
+        ]
+      },
+      {
+        "from": "observed runtime",
+        "to": "bounded research conclusion",
+        "preserved": [
+          "0 mismatches in 44 fixed cases on two ABIs"
+        ],
+        "transformed": [
+          "H -> M for tested corpus"
+        ],
+        "lost": [
+          "external reliability"
+        ],
+        "remainder": [
+          "independent OS/host witnesses, fuzzing and locale coverage"
         ]
       }
     ]
   },
   "result": {
-    "observed": "No CI result as of preregistration; local exact oracle self-tests passed",
-    "effect_size": "not applicable before execution",
-    "uncertainty": "Correlated project-authored witness; finite sample",
-    "status_after": "H",
+    "observed": "V1 and V2 both successful on ELF64 and i686 ELF32; all 44 fixed cases per ABI match exact rational acceptance/bit oracle; 78 direct native Pl_Get_Float observations/ABI for finite source facts across two compiler versions, zero native bit mismatches; five guarded overflows rejected before term creation per ABI",
+    "effect_size": "0/78 native exact-bit mismatches per ABI; 0/39 finite cases divergent from pinned historical version per ABI; 0/5 candidate overflows admitted per ABI",
+    "uncertainty": "Deterministic project-authored fixtures and oracle, same GitHub Linux host family, two ABI widths; no external independent reviewer or representative workload distribution",
+    "status_after": "M",
     "retired_claims": [],
     "active_remainder": [
-      "Actual ELF64/i686 execution",
-      "Locale sensitivity",
-      "Other compiler/CPU/OS combinations",
-      "Independent review"
+      "Only 44 frozen decimal forms, not all decimal strings or rounding modes",
+      "No independent differently authored decimal parser or separate physical CPU evidence",
+      "Locale-sensitive conversion and alternative OS/compiler flags untested",
+      "Finite lexical and native constant paths only, no general NaN/Infinity semantics",
+      "No real-application workload correctness guarantee"
     ]
   }
 }
