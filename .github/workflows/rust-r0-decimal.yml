@@ -7,6 +7,8 @@ on:
       - 'rust/float-decimal/**'
       - 'tests/float_indexing/rust_decimal_parity.py'
       - 'tests/float_indexing/rust_decimal_ffi_probe.c'
+      - 'docs/RUST_PORT_PLAN.md'
+      - 'docs/RUST_PORT_AUDIT.json'
       - '.github/workflows/rust-r0-decimal.yml'
   workflow_dispatch:
 

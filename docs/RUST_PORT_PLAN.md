@@ -109,3 +109,20 @@ thread safety or independent third-party verification.
 
 No external independent witness is asserted. Record R0 CI, C ABI
 observations and correction history before moving to R1.
+
+## R0 measured result — 17 November 2026
+
+[GitHub Actions run #44045926649](https://github.com/jesusvilela/gprolog/actions/runs/44045926649) passed on both ELF64 and i686 ELF32 with Rust 1.85.1. The Rust crate remains independent of the production GNU Prolog binary.
+
+| Observable | ELF64 | i686 ELF32 |
+|---|---:|---:|
+| Rust unit tests | 4/4 | 4/4 |
+| Tokens per C and German locale | 59/59 | 59/59 |
+| Real C ABI calls over both locales | 118 | 118 |
+| Exact-rational or status mismatches | **0** | **0** |
+
+The 59 tokens combine the previous 44-case exact rational corpus with 15 adversarial lexical forms. Actual Rust CLI output SHA-256 was identical under both locales on each ABI (`6dfaab48ee208ca2b0bf47384985576aa9efe64b312172fb3a87f15142bd512e`). A real C host loaded the Rust dynamic library with `dlopen`/`dlsym` under each active locale. For `0.5`, Rust returned `0x3fe0000000000000` in both locales, whereas libc `sscanf` returned `0x0000000000000000` in German locale; the C control therefore demonstrated the difference the Rust component avoids. Signed negative zero remained `0x8000000000000000` in both locales and ABIs.
+
+Raw evidence (30-day retention): `rust-r0-elf64` artifact **14311367159**, `rust-r0-elf32` artifact **14311053092**. The separately authored Rust code, C host and Python oracle all belong to this project; no independent external replication is claimed. No speedup has been measured. No production compiler, lexer, engine or native backend is replaced.
+
+**Promotion:** R0 candidate H -> M for these tokens, ABIs and locale regimes. Full GNU Prolog Rust portability remains H. Next authorized gate is a **shadow** call at the actual GNU Prolog lexer boundary, preserving the original C path and comparing both on the same user input before optional feature enablement.

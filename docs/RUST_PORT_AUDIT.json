@@ -37,9 +37,9 @@
   },
   "implementation": {
     "artifact": "rust/float-decimal and tests/float_indexing/rust_decimal_parity.py with rust_decimal_ffi_probe.c",
-    "commit": "pending CI head on branch rust/phase-0-finite-decimal",
+    "commit": "ea56f7e8d682b9a088c78bf89a6788b6d480c841 (R0 implementation and CI workflow); 04c67478 evidence preregistration",
     "environment": "Rust 1.85.1 pinned, Ubuntu 24.04 x86_64 and i686 ELF32 multilib, German/C locale",
-    "live_entrypoint": "cargo test, Rust CLI, dynamic C host via dlopen/dlsym, Python rational parity harness",
+    "live_entrypoint": "GitHub Actions 44045926649: cargo test + release cdylib and actual C dlopen host on ELF64 and i686 ELF32",
     "representation": "ASCII token, binary64 f64.to_bits() as u64 over C ABI, explicit status code"
   },
   "metric": {
@@ -61,12 +61,14 @@
     "black_box": [
       "44 previous exact decimal cases with independent integer-rational oracle",
       "15 adversarial syntax tokens",
-      "Native C ABI invocation through dlopen, not just Rust unit tests"
+      "Native C ABI invocation through dlopen, not just Rust unit tests",
+      "C host C and German locale comparison validated using real generated comma-decimal locale"
     ],
     "structural": [
       "Cargo stable pinned Rust toolchain and no external crates",
       "C ABI parameter typing, null and oversized length unit tests",
-      "Real 32-bit ELF class check for Rust executable/library and C caller"
+      "Real 32-bit ELF class check for Rust executable/library and C caller",
+      "readelf confirmed ELF64 and i686 ELF32 across Rust CLI, Rust cdylib and C host"
     ],
     "property_based": [
       "12 seeded dyadic cases from retained oracle generator"
@@ -110,17 +112,23 @@
       "https://github.com/jesusvilela/gprolog/blob/master/COPYING",
       "https://github.com/jesusvilela/gprolog/blob/master/src/BipsPl/lexer_supp.c",
       "https://github.com/jesusvilela/gprolog/blob/master/docs/EXACT_DECIMAL_BINARY64_PROTOCOL.md",
-      "https://github.com/jesusvilela/gprolog/blob/master/docs/NUMERIC_LOCALE_AUDIT.md"
+      "https://github.com/jesusvilela/gprolog/blob/master/docs/NUMERIC_LOCALE_AUDIT.md",
+      "https://github.com/jesusvilela/gprolog/actions/runs/44045926649"
     ],
     "execution_records": [
-      "R0 CI not yet verified; source and test scaffold committed",
-      "Prior Generation 8 and 9 C observations are measured but do not validate newly authored Rust code"
+      "R0 CI 44045926649: both ELF64 and i686 ELF32 jobs success; four Rust unit tests passed per ABI; 59 corpus/lexical tokens passed for each locale, zero parity errors",
+      "Each ABI: 118 real C ABI invocations across C and de_DE.UTF-8; all status/bit outputs matched previous exact rational oracle",
+      "C host negative control: for 0.5, C sscanf under C yielded bits 3fe0000000000000 while de_DE yielded 0000000000000000; Rust yielded 3fe0000000000000 in both",
+      "Signed negative zero preserved 8000000000000000 under both locales on both ABIs; Rust CLI output SHA256 identical under C/German environments: 6dfaab48ee208ca2b0bf47384985576aa9efe64b312172fb3a87f15142bd512e",
+      "Retained raw workflow artifacts: rust-r0-elf64 ID 14311367159 and rust-r0-elf32 ID 14311053092; both inspected",
+      "No production GNU Prolog C file was edited or linked with this Rust crate; R1 shadow interop remains unexecuted"
     ],
     "independent_witnesses": [],
     "claim_to_artifact_map": [
       "Rust parser correctness -> Rust CLI and C ABI output compared to previous exact Fraction oracle",
       "C-locale invariance -> C host forcibly activates C vs de_DE.UTF-8 before calling Rust cdylib",
-      "GNU Prolog completeness -> no supporting artifact at R0, remains H"
+      "GNU Prolog completeness -> no supporting artifact at R0, remains H",
+      "C locale-independent Rust result -> exact positive/negative C host witnesses within raw artifact 14311367159 and 14311053092"
     ]
   },
   "round_trip": {
@@ -172,22 +180,39 @@
         "remainder": [
           "R1 to R5 compiler/runtime/solver semantics and real workloads"
         ]
+      },
+      {
+        "from": "R0 required locale-independent byte conversion",
+        "to": "actual dynamic C host ELF64/i686",
+        "preserved": [
+          "finite binary64 status and 64-bit bits across both locale settings"
+        ],
+        "transformed": [
+          "Rust f64::from_str exposed by u64 C ABI"
+        ],
+        "lost": [
+          "entire GNU Prolog term and WAM semantics not part of R0"
+        ],
+        "remainder": [
+          "R1 must enter C lexer as shadow and compare exact C source tokens"
+        ]
       }
     ]
   },
   "result": {
-    "observed": "No runtime CI evidence yet for Rust library",
-    "effect_size": "not applicable until tests execute",
-    "uncertainty": "Rust, harness and migrated specification project-authored; no independent real-world workload evaluation",
-    "status_after": "H",
+    "observed": "M: Rust 1.85.1 independently authored finite-decimal candidate compiled on real ELF64 and i686 ELF32, 4/4 unit tests passed each; all 59 fixed tokens passed per C and German locale using Rust CLI, 118 real C ABI calls per ABI, zero bit/status mismatches. C sscanf negative control changed under German decimal locale while Rust bit results were invariant.",
+    "effect_size": "0/59 Rust CLI cases misclassified per locale per ABI, 0/118 FFI mismatches per ABI, 0/4 unit test failures; deterministic project-authored corpus, not population error estimate",
+    "uncertainty": "Tested Rust toolchain 1.85.1 on Linux hosted ELF64 and i686; same project-authored fraction oracle and C host; no independent external reproduction, performance estimate, real GNU Prolog integration or exhaustiveness",
+    "status_after": "M",
     "retired_claims": [
       "A single all-at-once Rust rewrite would automatically improve Prolog correctness or performance"
     ],
     "active_remainder": [
-      "ELF64 and i686 Rust/C ABI CI execution",
-      "R1 shadow integration with unchanged GNU Prolog C baseline",
-      "Independent FFI/unsafe-code review and fuzzing",
-      "Compiler and WAM representation invariants before deeper port"
+      "The Rust crate is not used by GNU Prolog yet; only the R0 standalone/FFI boundary is measured",
+      "R1 shadow mode must compare Rust and actual C Lexer_Number on same tokens without changing Prolog semantics, including error locations",
+      "No independent foreign-code integration, external independent reviewer or fuzz campaigns yet",
+      "Other platforms and Rust-to-native compiler build integration remain untested",
+      "Full Rust WAM/backtracking, finite-domain solver and assembler port has no implementation evidence"
     ]
   }
 }
