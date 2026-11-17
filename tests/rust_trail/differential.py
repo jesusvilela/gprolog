@@ -110,15 +110,16 @@ def main():
     cli.add_argument("--baseline", type=Path, required=True)
     cli.add_argument("--candidate", type=Path, required=True)
     cli.add_argument("--output", type=Path, required=True)
+    cli.add_argument("--abi", choices=["elf64", "elf32"], required=True)
     args = cli.parse_args()
     baseline, candidate = args.baseline.resolve(), args.candidate.resolve()
     if not baseline.is_file() or not candidate.is_file():
         raise SystemExit("Missing executable")
     output = args.output.resolve()
     env = dict(os.environ, LC_ALL="C", LANG="C")
-    report = {"baseline_commit": BASELINE_COMMIT,
+    report = {"baseline_commit": BASELINE_COMMIT, "abi": args.abi,
        "claim": "Behavioral equivalence for a fixed Rust-only subset; candidate trail vs snapshot baseline",
-       "controls": "Same runner, identical source/query bytes, Rust toolchain 1.85.1, C locale; 64-bit only",
+       "controls": "Same runner, identical source/query bytes, Rust 1.85.1, C locale; native ABI recorded for each job",
        "tests": [], "errors": [], "benchmark": {},
        "generated_seed": 17262026, "generated_cases": 128,
        "independent_witness": False, "passed": False}
@@ -177,7 +178,7 @@ def main():
             report["errors"].append("benchmark_output_sha256")
     report["passed"] = not report["errors"]
     output.write_text(json.dumps(report, indent=2, sort_keys=True)+"\n")
-    print("DIFFERENTIAL", "PASS" if report["passed"] else "FAIL",
+    print("DIFFERENTIAL", args.abi, "PASS" if report["passed"] else "FAIL",
           len(report["tests"]), "fixed+seeded programs", len(report["errors"]),
           "errors", flush=True)
     print("SYNTHETIC BASELINE", report["benchmark"]["baseline_median_wall_s"],
