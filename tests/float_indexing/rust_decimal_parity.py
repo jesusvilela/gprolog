@@ -126,11 +126,11 @@ def main():
                 failure(f"FFI {locale}/{name}: status {status}, expected {expected_status}")
             if want is not None and observed_bits != want:
                 failure(f"FFI {locale}/{name}: {observed_bits:016x}, expected {want:016x}")
-            if locale == "C" and name == "quarter" and old_bits != bits(token):
+            if locale == "C" and name == "half" and old_bits != bits(token):
                 failure(f"C locale sscanf control is wrong at {name}")
-            if locale == "de_DE.UTF-8" and name == "quarter" and old_bits == bits(token):
+            if locale == "de_DE.UTF-8" and name == "half" and old_bits == bits(token):
                 failure("German sscanf locale negative control did not differ")
-            if name in {"quarter", "tenth", "negative_zero", "max_exact",
+            if name in {"half", "tenth", "negative_zero", "max_exact",
                         "overflow_huge", "invalid_0", "invalid_6"}:
                 report["ffi_witnesses"].append({
                     "case": name, "locale": locale, "status": status,
