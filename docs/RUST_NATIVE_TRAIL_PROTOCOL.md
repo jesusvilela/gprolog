@@ -82,3 +82,43 @@ rollback defect. Repair the current invariants first.
 **Promotion:** H to bounded M for this trail-backed Rust subset only
 after both ABIs and a matched same-Rust snapshot differential pass.
 Project-authored tests are correlated evidence, not independent review.
+
+
+## Measured and corrected result — 17 November 2026
+
+The first build run 44118682272 failed to compile after accidentally
+dropping public Limits/Solution/SolveError types. Restored in
+aa753360; this defect is recorded rather than erased.
+
+Rust tests run 44119226614 then passed **45 tests per ABI** (14
+parser/engine unit, seven CLI, ten control, four metamorphic, ten
+trail-specific integration). Both ELF64 and actual i686 ELF32 passed.
+
+The initial Rust snapshot comparison run 44119675175 matched
+21/21 CLI cases but the 250-fact synthetic runtime registered
+0.00 seconds and was **not** useful performance evidence.
+
+The corrected [differential run 44120205901](https://github.com/jesusvilela/gprolog/actions/runs/44120205901)
+matched **149/149 complete ordered results**, including source
+stdout/stderr/exit statuses for 21 fixed and 128 seeded cases.
+Five paired alternating-order synthetic 20,000-fact trials after
+warmup recorded:
+
+| Observation | Rust snapshot | Rust trail + lazy choices |
+|---|---:|---:|
+| Median subprocess wall time | 20.987063 ms | 15.026416 ms |
+| Median peak resident memory | 16,428 KiB | 14,136 KiB |
+
+All ten observed runs had the same output hash; raw GitHub Actions
+artifact ID **14343264933** includes every sample, source hash and
+paired outcome. A wall-clock speed ratio of 1.397x and a 13.95%
+memory reduction describe THIS ONE synthetic case. They do not
+causally isolate the trail from deferred clause matching and do
+not establish broad real-world Prolog improvement.
+
+**Evidence governance:** M for the tested native Rust trail/cut/
+backtracking semantics and bounded sample values, H for broad
+ISO equivalence and WAM term heap/GC/performance portability.
+The snapshot reference and tests are project-authored and correlated;
+there is no external independent replication. Full ledger:
+RUST_NATIVE_TRAIL_AUDIT.json.

@@ -2,11 +2,13 @@ name: Rust trail vs snapshot baseline differential
 
 on:
   push:
-    branches: ['rust/native-trail-choicepoints']
+    branches: [master, 'rust/native-trail-choicepoints']
     paths:
       - 'rust/gprolog-native/**'
       - 'tests/rust_trail/**'
       - '.github/workflows/rust-trail-differential.yml'
+      - 'docs/RUST_NATIVE_TRAIL_PROTOCOL.md'
+      - 'docs/RUST_NATIVE_TRAIL_AUDIT.json'
   workflow_dispatch:
 
 permissions:
@@ -55,6 +57,8 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: rust-trail-differential
-          path: rust-trail-differential.json
+          path: |
+            rust-trail-differential.json
+            docs/RUST_NATIVE_TRAIL_AUDIT.json
           if-no-files-found: warn
           retention-days: 30
