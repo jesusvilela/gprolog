@@ -67,7 +67,8 @@ and choices created after commitment:
 
 The directly executed tests and their expectations are in
 tests/control.rs and tests/cli.rs. Consult the frozen operational
-protocol at ../../docs/RUST_NATIVE_CONTROL.md.
+protocol at ../../docs/RUST_NATIVE_CONTROL.md and bounded measurements
+in ../../docs/RUST_NATIVE_CONTROL_AUDIT.json.
 
 **Representation boundary:** this engine still clones substitutions
 per choice state. The control scopes are now testable, but a mutable

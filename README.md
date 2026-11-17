@@ -39,7 +39,7 @@ The initial [ELF64/i686 native CI](https://github.com/jesusvilela/gprolog/action
 The standalone Rust engine now also implements **semicolon disjunction,
 parenthesized goal groups, and invocation-scoped cut**, with the 10
 control-scope and two black-box CLI additions tested on both Linux
-ABIs. The [control audit](docs/RUST_NATIVE_CONTROL.md) documents
+ABIs. The [control protocol](docs/RUST_NATIVE_CONTROL.md) and [claim-level evidence](docs/RUST_NATIVE_CONTROL_AUDIT.json) documents
 nested-call pruning, cut-and-failure, answer order and the known
 semantic boundaries.
 

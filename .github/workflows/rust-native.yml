@@ -2,13 +2,15 @@ name: Rust native direct rewrite - executable and semantic gates
 
 on:
   push:
-    branches: [master, rust/native-rewrite]
+    branches: [master, rust/native-rewrite, 'rust/native-*']
     paths:
       - 'rust/gprolog-native/**'
       - 'Cargo.toml'
       - 'rust-toolchain.toml'
       - '.github/workflows/rust-native.yml'
       - 'docs/RUST_NATIVE_REWRITE.md'
+      - 'docs/RUST_NATIVE_CONTROL.md'
+      - 'docs/RUST_NATIVE_CONTROL_AUDIT.json'
   pull_request:
     paths:
       - 'rust/gprolog-native/**'
@@ -16,6 +18,8 @@ on:
       - 'rust-toolchain.toml'
       - '.github/workflows/rust-native.yml'
       - 'docs/RUST_NATIVE_REWRITE.md'
+      - 'docs/RUST_NATIVE_CONTROL.md'
+      - 'docs/RUST_NATIVE_CONTROL_AUDIT.json'
   workflow_dispatch:
 
 permissions:
