@@ -1,0 +1,8 @@
+[workspace]
+resolver = "2"
+members = ["rust/gprolog-native"]
+default-members = ["rust/gprolog-native"]
+exclude = ["rust/float-decimal"]
+
+[profile.release]
+panic = "abort"

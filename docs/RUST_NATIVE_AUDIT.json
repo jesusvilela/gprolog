@@ -1,0 +1,203 @@
+{
+  "task_id": "gprolog-rust-native-direct-rewrite-2026-11-17",
+  "claim": {
+    "text": "A standalone Rust executable can parse and solve a finite Horn-clause Prolog subset without executing or loading the historical C GNU Prolog engine or compatibility FFI",
+    "scope": "Rust-only CLI, Horn facts/rules, lists, variables, finite-term unification, DFS search and bounded resources; ELF64 and i686 ELF32 Linux",
+    "status_before": "H",
+    "assumptions": [
+      "Rust standard-library implementation, no imported runtime code from GNU Prolog C",
+      "Supported grammar explicitly restricted",
+      "Occurs-check and float bitwise identity are intentional temporary semantic differences"
+    ],
+    "forbidden_promotions": [
+      "No complete GNU Prolog rewrite claim",
+      "No ISO Prolog or rational-tree equivalence claim",
+      "No WAM or finite-domain solver claim",
+      "No correctness proof for all programs",
+      "No broad performance or memory-safety proof"
+    ]
+  },
+  "specification": {
+    "intended_object": "Single Rust-native parser, AST, unifier, clause-instantiation engine, choice stack and CLI entrypoint",
+    "invariants": [
+      "No C bridge dynamic link at runtime",
+      "Clause order and depth-first answer order retained in supported subset",
+      "Fresh clause variable identities on every invocation",
+      "No substitution leaks between branches",
+      "Malformed input and resource budgets yield bounded errors",
+      "Source parser rejects nested terms beyond limit and nonfinite floats"
+    ],
+    "known_answer_cases": [
+      "ancestor(ada,Who) -> noah then mei",
+      "member(V,[a,b,c]) -> a,b,c",
+      "append([a,b],[c],Out) -> [a,b,c]",
+      "f(X,X) matches f(a,a) but not f(a,b)",
+      "X=f(X) rejected by explicit occurs-check",
+      "Recursive loop with low step limit errors"
+    ]
+  },
+  "implementation": {
+    "artifact": "rust/gprolog-native/src/{syntax.rs,engine.rs,main.rs}, root Cargo.toml",
+    "commit": "26031ecfc6a20c03901f6ab076bfd3072a63d44e",
+    "environment": "Rust 1.85.1 standard library, Ubuntu 24.04 native Linux ELF64 and i686 ELF32",
+    "live_entrypoint": "Root Cargo default member gprolog-native, actual executed ELF64/i686 CLI and native tests in Actions #44052988720",
+    "representation": "Rust enum Term, clause/query variable IDs, cloned substitutions, explicit depth-first choice stack; no WAM yet"
+  },
+  "metric": {
+    "name": "Correct CLI answers, parser/engine unit tests, metamorphic tests and absence of C engine dependency",
+    "type": "typed_tuple",
+    "units": "tests and execution paths per ABI",
+    "direction": "two_sided",
+    "raw_before_clipping": true,
+    "semantic_invariance_claimed": true,
+    "equivalence_attacks": [
+      "Alpha-renamed clauses and query variables",
+      "Clause-order reversal",
+      "Repeated variables with branch rollback",
+      "Deep parser nesting and seeded malformed token corpus",
+      "32/64-bit ABI reproduction"
+    ]
+  },
+  "tests": {
+    "black_box": [
+      "Native Rust CLI output for ancestor/append/member/failure and errors"
+    ],
+    "structural": [
+      "ELF header checked on both ABIs",
+      "Dynamic library check excludes libgprolog and earlier float-decimal C ABI dependencies",
+      "Root Cargo workspace only includes native Rust package"
+    ],
+    "property_based": [
+      "Seeded 512-case deterministic malformed parser inputs (no crash/panic, not full fuzzing)",
+      "512 reproducible pseudo-random malformed ASCII parser inputs pass no-panic gate"
+    ],
+    "metamorphic": [
+      "Alpha-renaming gives same bindings",
+      "Reordering facts reorders depth-first answers",
+      "Max-solutions limit truncates deterministically",
+      "Reordering facts reverses expected result ordering without changing values"
+    ],
+    "fuzzing": [
+      "No libFuzzer/coverage-guided fuzzing; only reproducible malformed source corpus"
+    ],
+    "historical": [
+      "GNU Prolog C baseline retained as offline oracle; differential ISO suite not yet run on new runtime"
+    ]
+  },
+  "controls": {
+    "matched_baselines": [
+      "Analytic expected Horn solutions from fixed examples, independent of engine output",
+      "Historical GNU Prolog C implementation available offline, not linked"
+    ],
+    "negative_controls": [
+      "Unknown predicate returns error, not success",
+      "Cyclic finite-term binding rejected explicitly",
+      "Malformed input and nonfinite literal fail",
+      "Search budget exhaustion fails"
+    ],
+    "compute_parity": "Same Rust source/test suite on both CI ABIs; no cross-language benchmark attempted",
+    "parameter_parity": "Identical explicit max_steps and max_solutions across ABIs",
+    "sampling_parity": "Known-answer and alpha-renamed cases fixed before CI; seeded malformed corpus deterministic",
+    "data_access_parity": "Same bundled program/query source bytes across ABI test jobs"
+  },
+  "preregistration": {
+    "prediction": "Rust-only binary builds and returns ordered recursive solutions, finite-term checks, bounded errors, and no C engine link on both ABIs",
+    "primary_metric": "All Rust-native known-answer and structural/negative tests pass on ELF64 and i686; any wrong result blocks",
+    "uncertainty_method": "Deterministic functional cases; no statistical population estimate",
+    "kill_condition": "Wrong answer, variable capture, broken rollback, panic on malformed source, ABI failure, cycle acceptance in finite-term mode or hidden C runtime dependency",
+    "stop_condition": "Do not call the complete GNU Prolog rewrite done; expand Rust semantics natively, not by permanent interoperability adapter",
+    "promotion_rule": "H -> M only for observed bounded native Horn-clause subset, not whole Prolog runtime"
+  },
+  "evidence": {
+    "primary_sources": [
+      "https://github.com/jesusvilela/gprolog/blob/master/COPYING",
+      "https://github.com/jesusvilela/gprolog/blob/master/docs/RUST_R1_SHADOW_AUDIT.json",
+      "https://github.com/jesusvilela/gprolog/actions/runs/44052034540",
+      "https://github.com/jesusvilela/gprolog/actions/runs/44052494171",
+      "https://github.com/jesusvilela/gprolog/actions/runs/44052988720"
+    ],
+    "execution_records": [
+      "Initial native direct rewrite #44052034540: ELF64/i686 standalone binary, 11 unit + 5 CLI integration tests passed each; real CLI produced expected ancestor/append outputs",
+      "Default root Cargo workspace #44052494171: both ELF64/i686 targets passed after making gprolog-native the default member",
+      "Adversarial metamorphic #44052988720: 11 engine/parser unit + 5 CLI + 4 metamorphic/property-smoke tests all passed per ABI (20/20); 512 deterministic malformed byte-string parser cases exercised with no panic",
+      "ELF class readelf/ldd checks confirmed standalone native executables and no linked libgprolog or float-decimal bridge; historical C compiler independent",
+      "No proof or measurement yet for GNU Prolog full ISO, rational trees, cut, FD constraints or native codegen"
+    ],
+    "independent_witnesses": [],
+    "claim_to_artifact_map": [
+      "Root-first Rust executable -> Cargo.toml and rust/gprolog-native/src/main.rs",
+      "Finite Horn semantics -> syntax.rs and engine.rs with integration tests",
+      "No C production runtime dependency -> ELF/ldd CI checks",
+      "Remaining compatibility obligations -> docs/RUST_NATIVE_REWRITE.md",
+      "Detailed native-only tests and CLI outputs -> GitHub Actions #44052988720"
+    ]
+  },
+  "round_trip": {
+    "edges": [
+      {
+        "from": "direct Rust rewrite instead of C/Rust portability base",
+        "to": "standalone Rust Cargo workspace",
+        "preserved": [
+          "Rust owns lexer/runtime end-to-end"
+        ],
+        "transformed": [
+          "Old C role moved to offline oracle only"
+        ],
+        "lost": [
+          "GNU Prolog feature breadth not yet reproduced"
+        ],
+        "remainder": [
+          "Native WAM, FD, ISO language features remain absent"
+        ]
+      },
+      {
+        "from": "Horn-clause semantics",
+        "to": "AST and DFS substitutions",
+        "preserved": [
+          "variable freshness, clause ordering, finite unification in tested subset"
+        ],
+        "transformed": [
+          "Explicit occurs-check and resource bounds"
+        ],
+        "lost": [
+          "rational-tree and unbounded derivation semantics"
+        ],
+        "remainder": [
+          "requires explicit compatibility design"
+        ]
+      },
+      {
+        "from": "native program",
+        "to": "CI/test evidence",
+        "preserved": [
+          "binary output, exit codes and ABI architecture"
+        ],
+        "transformed": [
+          "fixed known-answer and metamorphic checks"
+        ],
+        "lost": [
+          "unexecuted program distribution"
+        ],
+        "remainder": [
+          "external differential suite, fuzzing and performance"
+        ]
+      }
+    ]
+  },
+  "result": {
+    "observed": "M: Native Rust-only executable builds and runs in root Cargo workspace on Linux ELF64 and i686 ELF32. Each ABI passes 11 engine/parser unit tests, five CLI integration tests, four metamorphic/property smoke tests, readelf class and no-C-bridge dependency gates. Key ancestor, member, append and bounded-error outputs match fixed expectations.",
+    "effect_size": "20/20 Rust-native tests per ABI passed; seeded malformed parser corpus 512/512 no panics in tested grammar; no overall ISO Prolog feature coverage estimate",
+    "uncertainty": "Finite Horn subset and project-authored tests; no external independent witness or complete GNU Prolog semantic differential suite",
+    "status_after": "M",
+    "retired_claims": [
+      "A permanent C/Rust fallback and shadow adapter is the intended production architecture"
+    ],
+    "active_remainder": [
+      "GNU Prolog full ISO language, arithmetic, cut, disjunction, streams and error terms still absent",
+      "Rational trees and trail/heap choice point design, WAM compiler and code generation still absent",
+      "Finite-domain solver and native assembler backends still absent",
+      "Independent reference comparison on intersecting supported subset and long-running realistic workloads",
+      "Performance measurement and hardened fuzz tests, non-Linux portability"
+    ]
+  }
+}

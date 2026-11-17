@@ -16,6 +16,36 @@
 
 ---
 
+## 現在 / A Rust-native future
+
+**The direction changed on 17 November 2026.** Rather than growing a
+permanent C/Rust interoperability layer, this fork now develops a
+**self-contained Rust Prolog runtime** as its primary forward
+implementation. The original GNU Prolog/C distribution is preserved
+for historical continuity and *offline differential tests*, not as a
+dependency of the new executable.
+
+The first runnable system is [gprolog-rs](rust/gprolog-native/README.md):
+a Rust lexer, parser, Horn-clause interpreter, unifier and depth-first
+search engine. From the repository root:
+
+```sh
+cargo +1.85.1 test
+cargo +1.85.1 run -- rust/gprolog-native/examples/ancestors.pl 'ancestor(ada,Who).'
+```
+
+The initial [ELF64/i686 native CI](https://github.com/jesusvilela/gprolog/actions/runs/44052988720) has passed **20/20 unit/integration/metamorphic tests per ABI**, including deterministic parser stress cases. This is a working *finite Horn-clause subset*, not full GNU Prolog. Read the [exact evidence and remaining obligations](docs/RUST_NATIVE_AUDIT.json).
+
+This **does not** mean GNU Prolog has been fully rewritten. Cut,
+disjunction, arithmetic, the WAM compiler/runtime, cyclic terms,
+finite-domain constraints and native backends are still missing.
+See the [direct rewrite contract](docs/RUST_NATIVE_REWRITE.md).
+The earlier [R0/R1 compatibility experiments](docs/RUST_PORT_PLAN.md)
+are historical evidence; they will not be expanded into a production
+fallback/bridge architecture.
+
+---
+
 ## 00 / Inheritance is part of the program
 
 **GNU Prolog** is the native-code Prolog compiler and finite-domain constraint system developed by **Daniel Diaz**. Its compact compiled executables, ISO-oriented semantics, Warren Abstract Machine (WAM) pipeline and Prolog/C interface are the point of departure here—not legacy baggage to be discarded.

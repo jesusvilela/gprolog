@@ -1,0 +1,19 @@
+[package]
+name = "gprolog-native"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+publish = false
+license = "LGPL-3.0-or-later OR GPL-2.0-or-later"
+description = "Standalone Rust-native experimental Horn-clause Prolog, without a C/WAM bridge"
+
+[lib]
+name = "gprolog_native"
+path = "src/lib.rs"
+
+[[bin]]
+name = "gprolog-rs"
+path = "src/main.rs"
+
+[dependencies]
+
