@@ -1,0 +1,81 @@
+name: Numeric locale startup and postinit audit (test-only)
+
+on:
+  push:
+    branches: ['audit/numeric-locale-invariant']
+    paths:
+      - 'tests/float_indexing/numeric_locale_audit.py'
+      - '.github/workflows/numeric-locale-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  numeric-locale:
+    name: Startup vs postinit LC_NUMERIC (${{ matrix.abi }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        abi: [elf64, elf32]
+    steps:
+      - name: Checkout audit branch
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Install and verify actual comma-decimal locale
+        run: |
+          sudo apt-get update -qq
+          sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y locales
+          sudo sed -i 's/^# *de_DE.UTF-8 UTF-8/de_DE.UTF-8 UTF-8/' /etc/locale.gen
+          grep '^de_DE.UTF-8 UTF-8' /etc/locale.gen
+          sudo locale-gen de_DE.UTF-8
+          locale -a | grep -iE '^de_DE[.]utf8$'
+          LC_ALL=de_DE.UTF-8 locale decimal_point
+      - name: Verify i686 target toolchain
+        if: matrix.abi == 'elf32'
+        run: |
+          sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y gcc-multilib libc6-dev-i386
+          printf 'int main(void){return 0;}\n' | gcc -m32 -x c - -o /tmp/audit-locale-elf32
+          readelf -h /tmp/audit-locale-elf32 | grep -E 'Class:.*ELF32'
+      - name: Inject test-only C trace and opt-in poststart mutation
+        run: |
+          python3 tests/float_indexing/numeric_locale_audit.py instrument \
+            --engine src/EnginePl/engine.c \
+            --lexer src/BipsPl/lexer_supp.c
+          git status --short
+          git diff --check
+          git diff --name-only -- src/EnginePl/engine.c src/BipsPl/lexer_supp.c
+      - name: Build ELF64 instrumented compiler
+        if: matrix.abi == 'elf64'
+        working-directory: src
+        run: |
+          ./configure --with-install-dir=in-place
+          make
+          make install
+      - name: Build genuine i686 ELF32 instrumented compiler
+        if: matrix.abi == 'elf32'
+        working-directory: src
+        run: |
+          CC='gcc -m32' CFLAGS='-O3 -fomit-frame-pointer -m32' LDFLAGS='-m32' \
+            ./configure --host=i686-pc-linux-gnu --with-install-dir=in-place
+          make
+          make install
+      - name: Verify binary ABI and active locale at numeric sscanf
+        run: |
+          for exe in bin/gprolog bin/gplc; do
+            readelf -h "$exe" | grep -E "Class:.*ELF${{ matrix.abi == 'elf32' && '32' || '64' }}"
+          done
+          python3 tests/float_indexing/numeric_locale_audit.py verify \
+            --bin-dir "$PWD/bin" \
+            --output "$PWD/numeric-locale-${{ matrix.abi }}.json"
+      - name: Preserve typed startup result and postinit counterexamples
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: numeric-locale-${{ matrix.abi }}
+          path: numeric-locale-${{ matrix.abi }}.json
+          if-no-files-found: warn
+          retention-days: 30
