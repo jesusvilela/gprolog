@@ -1,0 +1,92 @@
+name: Rust R0 decimal parser parity and C ABI (audit only)
+
+on:
+  push:
+    branches: ['rust/phase-0-finite-decimal']
+    paths:
+      - 'rust/float-decimal/**'
+      - 'tests/float_indexing/rust_decimal_parity.py'
+      - 'tests/float_indexing/rust_decimal_ffi_probe.c'
+      - 'docs/RUST_PORT_PLAN.md'
+      - 'docs/RUST_PORT_AUDIT.json'
+      - '.github/workflows/rust-r0-decimal.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rust-r0:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        abi: [elf64, elf32]
+    steps:
+      - name: Checkout experimental fork
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Pin Rust compiler
+        run: |
+          rustup toolchain install 1.85.1 --profile minimal
+          rustc +1.85.1 --version
+          cargo +1.85.1 --version
+      - name: Install verified comma-decimal locale
+        run: |
+          sudo apt-get update -qq
+          sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y locales
+          sudo sed -i 's/^# *de_DE.UTF-8 UTF-8/de_DE.UTF-8 UTF-8/' /etc/locale.gen
+          grep '^de_DE.UTF-8 UTF-8' /etc/locale.gen
+          sudo locale-gen de_DE.UTF-8
+          locale -a | grep -iE '^de_DE[.]utf8$'
+          LC_ALL=de_DE.UTF-8 locale decimal_point
+      - name: Install i686 Rust target and C multilib
+        if: matrix.abi == 'elf32'
+        run: |
+          sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y gcc-multilib libc6-dev-i386
+          rustup target add i686-unknown-linux-gnu --toolchain 1.85.1
+          cat > /tmp/gcc-i686 <<'SH'
+          #!/bin/sh
+          exec gcc -m32 "$@"
+          SH
+          chmod +x /tmp/gcc-i686
+          printf 'int main(void){return 0;}\n' | gcc -m32 -x c - -o /tmp/check-i686
+          readelf -h /tmp/check-i686 | grep -E 'Class:.*ELF32'
+      - name: Test Rust library and compile C ABI artifacts
+        run: |
+          set -eu
+          if [ "${{ matrix.abi }}" = "elf32" ]; then
+            export TARGET=i686-unknown-linux-gnu
+            export CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER=/tmp/gcc-i686
+            export CC_ABI="-m32"
+          else
+            export TARGET=x86_64-unknown-linux-gnu
+            export CC_ABI="-m64"
+          fi
+          cargo +1.85.1 test --manifest-path rust/float-decimal/Cargo.toml --target "$TARGET" --all-targets
+          cargo +1.85.1 build --release --manifest-path rust/float-decimal/Cargo.toml --target "$TARGET"
+          mkdir -p /tmp/rust-r0
+          gcc "$CC_ABI" -std=c11 -O2 -Wall -Wextra \
+            tests/float_indexing/rust_decimal_ffi_probe.c -ldl -o /tmp/rust-r0/ffi_host
+          cp rust/float-decimal/target/"$TARGET"/release/float_probe /tmp/rust-r0/float_probe
+          cp rust/float-decimal/target/"$TARGET"/release/libgprolog_float_decimal.so /tmp/rust-r0/libgprolog_float_decimal.so
+          for exe in /tmp/rust-r0/ffi_host /tmp/rust-r0/float_probe /tmp/rust-r0/libgprolog_float_decimal.so; do
+            file "$exe"
+            readelf -h "$exe" | grep -E "Class:.*ELF${{ matrix.abi == 'elf32' && '32' || '64' }}"
+          done
+          python3 tests/float_indexing/rust_decimal_parity.py \
+            --rust-binary /tmp/rust-r0/float_probe \
+            --rust-library /tmp/rust-r0/libgprolog_float_decimal.so \
+            --c-host /tmp/rust-r0/ffi_host \
+            --abi ${{ matrix.abi }} \
+            --output "$PWD/rust-r0-${{ matrix.abi }}.json"
+      - name: Preserve raw Rust and C ABI observations
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: rust-r0-${{ matrix.abi }}
+          path: rust-r0-${{ matrix.abi }}.json
+          if-no-files-found: warn
+          retention-days: 30
