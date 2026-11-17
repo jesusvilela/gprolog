@@ -39,6 +39,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <float.h>
 #include <string.h>
 #include <ctype.h>
 #include <stdarg.h>
@@ -491,7 +492,20 @@ Lexer_Number(StmInf *pstm, Bool integer_only)
 
  end_float:
   *p = '\0';
-  sscanf(pl_token.name, "%lf", &pl_token.float_num);
+  /* An overflowing decimal can scan to +/-Inf. Do not pass a non-finite
+   * token to term construction or emit inf/-inf as a WAM float operand.
+   * Unlike rejecting ERANGE, this preserves finite subnormal numbers and
+   * accepted underflow-to-zero literals. Also reject a NaN if any numeric
+   * scanner happens to produce one.
+   */
+  if (sscanf(pl_token.name, "%lf", &pl_token.float_num) != 1 ||
+      !(pl_token.float_num <= DBL_MAX && pl_token.float_num >= -DBL_MAX))
+    {
+      pl_token.type = TOKEN_FULL_STOP; /* allow parser error recovery */
+      pl_token.line = pstm->line_count + 1;
+      pl_token.col = pstm->line_pos + 1;
+      err_msg = "finite floating point literal expected here";
+    }
 
  push_back:
   Unget_Last_Char;
