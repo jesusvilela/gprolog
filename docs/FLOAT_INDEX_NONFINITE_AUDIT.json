@@ -1,0 +1,181 @@
+{
+  "task_id": "gprolog-nonfinite-2026-11-17",
+  "claim": {
+    "text": "Added float indexing causes no differential nonfinite crash and numeric overflow handling does not crash",
+    "scope": "20 fixed source cases, historical baseline versus merged fork, Linux ELF64 and i686 ELF32",
+    "status_before": "H",
+    "assumptions": [
+      "same input hashes",
+      "same compiler flags",
+      "known finite cases have independent expected outputs"
+    ],
+    "forbidden_promotions": [
+      "no ISO nonfinite support claim",
+      "no shared-crash safety pass",
+      "no independent replication assertion"
+    ]
+  },
+  "specification": {
+    "intended_object": "Two-version two-ABI native and consulted classification matrix",
+    "invariants": [
+      "identical input files",
+      "finite controls return expected ordered lists",
+      "crash must fail even when both versions crash"
+    ],
+    "known_answer_cases": [
+      "1.25 head and 3.25 arithmetic output",
+      "subnormal and zero controls",
+      "atom nan inf infinity controls"
+    ]
+  },
+  "implementation": {
+    "artifact": "tests/float_indexing/nonfinite_matrix.py",
+    "commit": "518edadbf4681fdf9b5920a95a4637d86f38c77f",
+    "environment": "Ubuntu 24.04 ELF64/i686 multilib; goal-expansion-only SHA 12b4284378a59098b9004fe2b454ad9c19536370",
+    "live_entrypoint": "GitHub Actions 44031708229",
+    "representation": "Per-case raw stdout, code, native compile, consulted mode and WAM SHA256"
+  },
+  "metric": {
+    "name": "fatal-crash and differential outcome by case",
+    "type": "typed_tuple",
+    "units": "case x version x ABI x execution path",
+    "direction": "two_sided",
+    "raw_before_clipping": true,
+    "semantic_invariance_claimed": true,
+    "equivalence_attacks": [
+      "positive and negative exponent overflow",
+      "simple overflowing fact with no indexing",
+      "32/64 ABI",
+      "native and consulted"
+    ]
+  },
+  "tests": {
+    "black_box": [
+      "20 fixed cases per ABI and compiler"
+    ],
+    "structural": [
+      "generated WAM inf and -inf text compared",
+      "ELF32 check"
+    ],
+    "property_based": [
+      "not performed: only deterministic boundary cases"
+    ],
+    "metamorphic": [
+      "signed exponent overflow and minimized non-indexed source"
+    ],
+    "fuzzing": [
+      "not performed: no random generator"
+    ],
+    "historical": [
+      "historical baseline SHA fixed before float indexing"
+    ]
+  },
+  "controls": {
+    "matched_baselines": [
+      "goal-expansion-only SHA 12b4284378a59098b9004fe2b454ad9c19536370"
+    ],
+    "negative_controls": [
+      "finite and subnormal heads, lexical atoms, finite arithmetic"
+    ],
+    "compute_parity": "Same GitHub runner and matched build flags per ABI",
+    "parameter_parity": "No model parameters; identical source bytes",
+    "sampling_parity": "Twenty frozen cases, five posthoc triage cases excluded from primary gate",
+    "data_access_parity": "Identical fixtures generated once and hash checked"
+  },
+  "preregistration": {
+    "prediction": "Zero crash and candidate-only divergence",
+    "primary_metric": "Failure count across 20 original cases per ABI",
+    "uncertainty_method": "Deterministic descriptive observation; no confidence interval",
+    "kill_condition": "Any shared/candidate-only fatal crash, timeout, differential output or finite-control failure",
+    "stop_condition": "No production code modification without a separate minimal reproducer and fix",
+    "promotion_rule": "Only M for matched finite-scope parity; R for nonfinite safety on detected crash"
+  },
+  "evidence": {
+    "primary_sources": [
+      "https://github.com/jesusvilela/gprolog/actions/runs/44031111427",
+      "https://github.com/jesusvilela/gprolog/actions/runs/44031708229"
+    ],
+    "execution_records": [
+      "V1 false green: fatal segmentation diagnosis reported as normal error",
+      "V2 44031708229 red on ELF64 and i686 ELF32: four of twenty consulted cases crash in both versions",
+      "Positive overflow minimal fact reproduces without float indexing; negative overflow consult succeeds",
+      "Both native WAM parser paths reject inf/-inf with float expected"
+    ],
+    "independent_witnesses": [],
+    "claim_to_artifact_map": [
+      "fatal crash -> 14305242828, 14305861852 raw artifacts",
+      "source conversion -> lexer_supp.c sscanf",
+      "minimal crash -> posthoc triage_cases",
+      "No independent witness; both builds derive from same source lineage"
+    ]
+  },
+  "round_trip": {
+    "edges": [
+      {
+        "from": "lexer numeric token",
+        "to": "WAM float",
+        "preserved": [
+          "out-of-range literal yields inf representation"
+        ],
+        "transformed": [
+          "native generated text inf/-inf"
+        ],
+        "lost": [
+          "safe parse error"
+        ],
+        "remainder": [
+          "root C cause"
+        ]
+      },
+      {
+        "from": "consulted source",
+        "to": "execution",
+        "preserved": [
+          "minimal fact loading"
+        ],
+        "transformed": [
+          "fatal diagnostic for positive overflow"
+        ],
+        "lost": [
+          "normal recoverability"
+        ],
+        "remainder": [
+          "unsigned overflow behavior"
+        ]
+      },
+      {
+        "from": "status-only test",
+        "to": "crash-aware test",
+        "preserved": [
+          "raw stderr"
+        ],
+        "transformed": [
+          "classified shared fatal diagnostic"
+        ],
+        "lost": [
+          "original false-green status retired"
+        ],
+        "remainder": [
+          "needs safe fix"
+        ]
+      }
+    ]
+  },
+  "result": {
+    "observed": "Both versions show four fatal consulted cases on both ELF64 and ELF32; five posthoc minimizers localize trigger to positive overflow fact; no candidate-only difference",
+    "effect_size": "4/20 matched cases per ABI fail shared crash gate; not a population rate",
+    "uncertainty": "Only deterministic project-authored fixtures on Linux runner family",
+    "status_after": "R",
+    "retired_claims": [
+      "first green CI means nonfinite safe",
+      "nonzero GNU Prolog error status implies noncrash",
+      "float hash table necessary for crash"
+    ],
+    "active_remainder": [
+      "safe lexer conversion rejection policy",
+      "actual C segfault root cause",
+      "why negative inf loads while positive inf crashes",
+      "independent cross-platform reproduction"
+    ]
+  }
+}
