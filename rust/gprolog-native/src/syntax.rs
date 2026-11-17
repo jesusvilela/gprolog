@@ -74,6 +74,8 @@ enum Kind {
     LBracket,
     RBracket,
     Comma,
+    Semicolon,
+    Cut,
     Dot,
     Bar,
     Rule,
@@ -117,6 +119,8 @@ fn tokenize(source: &str) -> Result<Vec<Token>, SyntaxError> {
             b'[' => { at += 1; Kind::LBracket }
             b']' => { at += 1; Kind::RBracket }
             b',' => { at += 1; Kind::Comma }
+            b';' => { at += 1; Kind::Semicolon }
+            b'!' => { at += 1; Kind::Cut }
             b'.' => { at += 1; Kind::Dot }
             b'|' => { at += 1; Kind::Bar }
             b'=' => { at += 1; Kind::Equal }
@@ -276,6 +280,7 @@ impl Parser {
         let pos = self.offset();
         match self.advance() {
             Kind::Variable(name) => Ok(Term::Var(self.new_var(name))),
+            Kind::Cut => Ok(Term::Atom("!".into())),
             Kind::Integer(n) => Ok(Term::Integer(n)),
             Kind::Float(bits) => Ok(Term::Float(bits)),
             Kind::Atom(name) => {
@@ -327,12 +332,34 @@ impl Parser {
         }
     }
 
-    fn goals(&mut self) -> Result<Vec<Term>, SyntaxError> {
-        let mut values = vec![self.goal()?];
-        while self.consume(&Kind::Comma) {
-            values.push(self.goal()?);
+    // Comma binds more tightly than semicolon. Parenthesized groups
+    // enter the control expression parser, never the data-term parser.
+    fn control_primary(&mut self) -> Result<Term, SyntaxError> {
+        if self.consume(&Kind::LParen) {
+            let expression = self.disjunction()?;
+            self.expect(&Kind::RParen, "')' after control group")?;
+            Ok(expression)
+        } else {
+            self.goal()
         }
-        Ok(values)
+    }
+
+    fn conjunction(&mut self) -> Result<Term, SyntaxError> {
+        let mut left = self.control_primary()?;
+        while self.consume(&Kind::Comma) {
+            let right = self.control_primary()?;
+            left = Term::Struct(",".into(), vec![left, right]);
+        }
+        Ok(left)
+    }
+
+    fn disjunction(&mut self) -> Result<Term, SyntaxError> {
+        let mut left = self.conjunction()?;
+        while self.consume(&Kind::Semicolon) {
+            let right = self.conjunction()?;
+            left = Term::Struct(";".into(), vec![left, right]);
+        }
+        Ok(left)
     }
 }
 
@@ -348,7 +375,7 @@ pub fn parse_program(source: &str) -> Result<Program, SyntaxError> {
                 "clause head must be a callable atom or structure"));
         }
         let body = if parser.consume(&Kind::Rule) {
-            parser.goals()?
+            vec![parser.disjunction()?]
         } else { Vec::new() };
         parser.expect(&Kind::Dot, "'.' after clause")?;
         clauses.push(Clause { head, body });
@@ -359,7 +386,7 @@ pub fn parse_program(source: &str) -> Result<Program, SyntaxError> {
 pub fn parse_query(source: &str, next_var: usize) -> Result<Query, SyntaxError> {
     let mut parser = Parser::new(source, next_var)?;
     parser.consume(&Kind::Query);
-    let goals = parser.goals()?;
+    let goals = vec![parser.disjunction()?];
     parser.expect(&Kind::Dot, "'.' after query")?;
     parser.expect(&Kind::End, "end of query")?;
     Ok(Query {

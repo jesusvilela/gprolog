@@ -30,6 +30,7 @@ pub enum SolveError {
     StepBudgetExceeded(usize),
     UnknownPredicate(String, usize),
     UnsupportedGoal(String),
+    InvalidCutBarrier { boundary: usize, available: usize },
 }
 
 impl fmt::Display for SolveError {
@@ -41,14 +42,24 @@ impl fmt::Display for SolveError {
                 write!(f, "unknown predicate {name}/{arity}"),
             Self::UnsupportedGoal(goal) =>
                 write!(f, "unsupported callable goal: {goal}"),
+            Self::InvalidCutBarrier { boundary, available } =>
+                write!(f, "cut barrier {boundary} exceeds {available} remaining alternatives"),
         }
     }
 }
 impl std::error::Error for SolveError {}
 
 #[derive(Clone)]
+struct PendingGoal {
+    term: Term,
+    // Number of pre-existing choice alternatives when owning predicate
+    // was invoked. Cut may remove later alternatives, not caller choices.
+    cut_barrier: usize,
+}
+
+#[derive(Clone)]
 struct State {
-    goals: Vec<Term>,
+    goals: Vec<PendingGoal>,
     subst: Substitution,
 }
 
@@ -202,7 +213,9 @@ pub fn solve(program: &Program, query: &Query, limits: Limits)
     }
     let mut next_var = query.next_var.max(program.next_var);
     let mut stack = vec![State {
-        goals: query.goals.clone(),
+        goals: query.goals.iter().cloned()
+            .map(|term| PendingGoal { term, cut_barrier: 0 })
+            .collect(),
         subst: HashMap::new(),
     }];
     let mut solutions = Vec::new();
@@ -221,10 +234,62 @@ pub fn solve(program: &Program, query: &Query, limits: Limits)
             continue;
         }
         let mut remaining = state.goals.into_iter();
-        let goal = remaining.next().expect("nonempty checked");
-        let rest: Vec<Term> = remaining.collect();
-        let goal_value = root(&goal, &state.subst);
+        let pending = remaining.next().expect("nonempty checked");
+        let rest: Vec<PendingGoal> = remaining.collect();
+        let cut_barrier = pending.cut_barrier;
+        let goal_value = root(&pending.term, &state.subst);
         match &goal_value {
+            Term::Atom(name) if name == "!" => {
+                if cut_barrier > stack.len() {
+                    return Err(SolveError::InvalidCutBarrier {
+                        boundary: cut_barrier,
+                        available: stack.len(),
+                    });
+                }
+                // This discards choices created since invocation entry,
+                // including earlier body disjunctions and same-predicate
+                // alternative clauses, while preserving caller choices.
+                stack.truncate(cut_barrier);
+                stack.push(State { goals: rest, subst: state.subst });
+                continue;
+            }
+            Term::Struct(name, args) if name == "," && args.len() == 2 => {
+                let mut goals = Vec::with_capacity(rest.len() + 2);
+                goals.push(PendingGoal {
+                    term: args[0].clone(),
+                    cut_barrier,
+                });
+                goals.push(PendingGoal {
+                    term: args[1].clone(),
+                    cut_barrier,
+                });
+                goals.extend(rest);
+                stack.push(State { goals, subst: state.subst });
+                continue;
+            }
+            Term::Struct(name, args) if name == ";" && args.len() == 2 => {
+                let mut right = Vec::with_capacity(rest.len() + 1);
+                right.push(PendingGoal {
+                    term: args[1].clone(),
+                    cut_barrier,
+                });
+                right.extend(rest.iter().cloned());
+                stack.push(State {
+                    goals: right,
+                    subst: state.subst.clone(),
+                });
+                let mut left = Vec::with_capacity(rest.len() + 1);
+                left.push(PendingGoal {
+                    term: args[0].clone(),
+                    cut_barrier,
+                });
+                left.extend(rest);
+                stack.push(State {
+                    goals: left,
+                    subst: state.subst,
+                });
+                continue;
+            }
             Term::Atom(name) if name == "true" => {
                 stack.push(State { goals: rest, subst: state.subst });
                 continue;
@@ -257,11 +322,20 @@ pub fn solve(program: &Program, query: &Query, limits: Limits)
         if clauses.is_empty() {
             return Err(SolveError::UnknownPredicate(name.into(), arity));
         }
+        // The barrier belongs to THIS invocation, before pushing its
+        // alternative clauses; caller continuation goals keep their own
+        // previous barriers (never blindly relabel the entire rest).
+        let invocation_barrier = stack.len();
         for clause in clauses.into_iter().rev() {
             let new_clause = fresh_clause(clause, &mut next_var);
             let mut new_subst = state.subst.clone();
             if unify(&goal_value, &new_clause.head, &mut new_subst, 0) {
-                let mut goals = new_clause.body;
+                let mut goals: Vec<PendingGoal> = new_clause.body.into_iter()
+                    .map(|term| PendingGoal {
+                        term,
+                        cut_barrier: invocation_barrier,
+                    })
+                    .collect();
                 goals.extend(rest.iter().cloned());
                 stack.push(State { goals, subst: new_subst });
             }

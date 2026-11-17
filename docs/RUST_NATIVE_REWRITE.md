@@ -55,7 +55,7 @@ permanent modules of the new interpreter.
 
 ## Explicitly not yet implemented
 
-ISO Prolog operator precedence, cut, disjunction, DCGs, dynamic
+Full ISO Prolog operator precedence, if-then, negation, DCGs, dynamic
 predicates, attributed variables, constraint domains, arithmetic,
 exception handling, streams, cyclic/rational trees, the WAM bytecode,
 GNU Prolog native code generation, foreign predicates, garbage
@@ -116,3 +116,25 @@ is tested, promote only the implemented subset from H to M.
 The standalone Rust CLI now exists at `rust/gprolog-native`, with a **root Cargo workspace** defaulting to it. No GNU Prolog C engine or C/Rust bridge is loaded. [Native CI #44052988720](https://github.com/jesusvilela/gprolog/actions/runs/44052988720) passed on Linux ELF64 and genuine i686 ELF32: **11 parser/unifier/engine tests, five CLI integration tests and four deterministic metamorphic tests per ABI**, zero failures. The malformed-input metamorphic test additionally exercised 512 seeded ASCII cases without a parser panic. The tests confirmed recursive ancestry, member and append lists, variable scoping, source-order backtracking, failure/unknown-predicate distinctions and explicit search-budget errors.
 
 This promotes **only the documented finite Horn-clause subset to M (measured)**. The complete GNU Prolog rewrite remains H (unimplemented). The existing C source is retained solely as an offline oracle, while the old R0/R1 bridge strategy is explicitly superseded. See [RUST_NATIVE_AUDIT.json](RUST_NATIVE_AUDIT.json) for the typed claim and tests ledger.
+
+
+## Control-flow extension: cut and disjunction (17 November 2026)
+
+The first Rust-native control extension parses semicolon disjunction
+with lower precedence than comma conjunction, parenthesized goal groups,
+and the cut atom. The engine now carries a predicate-invocation
+choice-stack barrier with each pending goal. A cut prunes alternatives
+created inside its current invocation without erasing the caller's
+earlier alternatives or later choices.
+
+GitHub Actions 44073608503 passed **32 Rust tests per ABI** on Linux
+ELF64 and i686 ELF32 (11 library, seven CLI, ten control-scope,
+four metamorphic tests). Tests directly challenge cut-before/later
+disjunction, cut followed by failure, nested caller scoping, and
+answer order. The original C runtime is not linked by the executable.
+
+This measured result is a bounded control-semantics extension, NOT
+a WAM term heap, an efficient trail, complete ISO Prolog, or a
+full GNU Prolog rewrite. The current stack still copies substitution
+snapshots. See RUST_NATIVE_CONTROL.md for the frozen tests and
+claim-specific evidence; no independent third-party replication.

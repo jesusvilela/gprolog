@@ -1,0 +1,202 @@
+{
+  "task_id": "gprolog-rust-native-choicepoint-cut-disjunction-2026-11-17",
+  "claim": {
+    "text": "Rust-only Prolog can execute disjunction with comma precedence and invocation-scoped cut, preserving caller alternatives and later-created choices",
+    "scope": "finite-term Horn+control subset, ten scoped-control unit tests plus two CLI cases, Linux ELF64 and i686 ELF32",
+    "status_before": "H",
+    "assumptions": [
+      "DFS alternative states stored on one LIFO stack",
+      "Pending goal retains owning predicate barrier when returning to caller",
+      "Substitutions are cloned per choice state, not trailed",
+      "Rust-only binary, no C Prolog runtime dependency"
+    ],
+    "forbidden_promotions": [
+      "Do not claim WAM heap, trail or native Prolog compiler implemented",
+      "Do not claim complete ISO cut semantics for meta-call, modules, if-then and exceptions",
+      "Do not treat project-authored expected answers as independent third-party replication",
+      "Do not infer speedup or memory safety from passing functional cases"
+    ]
+  },
+  "specification": {
+    "intended_object": "Scoped choicepoint barrier embedded in each pending goal with correct semicolon/comma control expression parse",
+    "invariants": [
+      "Comma binds tighter than semicolon and grouping overrides precedence",
+      "Root cut prunes earlier query alternatives",
+      "Cut after disjunction commits earlier branch and clause alternatives",
+      "Cut before disjunction retains later choices",
+      "Inner predicate cut does not prune earlier caller choicepoints",
+      "Caller cut can prune child alternatives when returning",
+      "A cut followed by fail still commits, without reaching fallback clauses"
+    ],
+    "known_answer_cases": [
+      "p(a).p(b). query p(X),!. -> a only",
+      "p(X):-(X=a;X=b). -> a,b",
+      "p:-!,fail. p. -> false",
+      "p(X):-!,(X=a;X=b). -> a,b",
+      "inner(X):-!,(X=a;X=b).inner(c). outer(Z):-(Z=one;Z=two),inner(_). -> one,one,two,two",
+      "X=a,fail;X=b -> b; (X=a;X=b),fail -> none"
+    ]
+  },
+  "implementation": {
+    "artifact": "rust/gprolog-native/src/syntax.rs, engine.rs, tests/control.rs, tests/cli.rs",
+    "commit": "syntax 2158f5a6; engine 85fdf75b; control tests 683c6d94; CLI tests b6b67906",
+    "environment": "Rust 1.85.1, Linux ELF64 and i686 ELF32 GitHub-hosted runner",
+    "live_entrypoint": "root Cargo workspace builds independent gprolog-rs executable; parse_program/parse_query then solve",
+    "representation": "Term::Struct(semicolon/comma, children), PendingGoal {term,cut_barrier}, DFS Vec<State> snapshot substitutions"
+  },
+  "metric": {
+    "name": "Wrong/missing/out-of-order answers in fixed cut/disjunction corpus and Rust regression tests",
+    "type": "typed_tuple",
+    "units": "tests per ABI, plus executable output examples",
+    "direction": "two_sided",
+    "raw_before_clipping": true,
+    "semantic_invariance_claimed": true,
+    "equivalence_attacks": [
+      "Alpha rename local variables",
+      "Change textual clause order and verify answer order changes appropriately",
+      "Insert neutral true in goal chain",
+      "Add failing branches before/after cut",
+      "Preserve outer alternatives when cutting inner predicate"
+    ]
+  },
+  "tests": {
+    "black_box": [
+      "Seven compiled Rust CLI integration tests, including control examples commit, late and outer",
+      "Ten direct parse-and-solve control cases with explicit expected answer order"
+    ],
+    "structural": [
+      "Runtime Rust binary ldd checked for absence of libgprolog/legacy Rust float C ABI",
+      "Rust ELF64/i686 architecture verified",
+      "Pending goal retains owner barrier in Rust engine"
+    ],
+    "property_based": [
+      "Prior 512-seeded malformed parser strings in metamorphic suite, no panic; not property-complete"
+    ],
+    "metamorphic": [
+      "Alpha-renaming equivalence of successful answer sequences",
+      "Clause reorder reverses observable answer order",
+      "Insert neutral true and fail in control branch"
+    ],
+    "fuzzing": [
+      "No coverage-guided fuzzing and no randomized semantic differential corpus in this round"
+    ],
+    "historical": [
+      "Existing 11 Rust library tests, five prior CLI tests and four metamorphic tests remain green",
+      "Historical GNU Prolog compiler/bootstrap CI remains green but does not validate Rust cut parity directly"
+    ]
+  },
+  "controls": {
+    "matched_baselines": [
+      "Previous Rust native Horn engine on fixed ancestor/member/append/occurs-check tests",
+      "Analytically expected scoped cut answers written before implementation"
+    ],
+    "negative_controls": [
+      "Cut followed by fail blocks fallback clause",
+      "Cut before new choices does not remove new alternatives",
+      "Inner cut must not prune caller disjunction"
+    ],
+    "compute_parity": "Same Cargo workspace binary and corpus on both CI ABIs; no C/Rust runtime performance comparison",
+    "parameter_parity": "Identical limits and Rust 1.85.1 source code for both ABIs",
+    "sampling_parity": "Frozen ten tests and two CLI cases across both ABIs; no post-hoc changed expected answers",
+    "data_access_parity": "Same bundled Prolog source/test files on both ABIs"
+  },
+  "preregistration": {
+    "prediction": "All frozen control-flow cases preserve expected order, correct cut pruning and previous Horn regressions on both ABIs",
+    "primary_metric": "Any incorrect answer/ordering, wrong cut scope, crash, missing CLI result or ABI-specific regression",
+    "uncertainty_method": "Deterministic bounded cases; no statistical population inference",
+    "kill_condition": "One erroneous extra/missing/out-of-order answer, pruned caller alternative, later alternative wrongly pruned, malformed syntax accepted or C bridge dependency",
+    "stop_condition": "Do not optimize to WAM trail/heap before invocation-scope semantics are reproducible",
+    "promotion_rule": "H -> M only for bounded control semantics on tested corpus; full GNU Prolog parity remains H"
+  },
+  "evidence": {
+    "primary_sources": [
+      "https://github.com/jesusvilela/gprolog/actions/runs/44073324469",
+      "https://github.com/jesusvilela/gprolog/actions/runs/44073608503",
+      "https://github.com/jesusvilela/gprolog/actions/runs/44073608537",
+      "https://github.com/jesusvilela/gprolog/blob/master/docs/RUST_NATIVE_AUDIT.json"
+    ],
+    "execution_records": [
+      "Initial control tests run #44073324469 passed 11 library+5 prior CLI+10 control+4 metamorphic tests on both ELF64/i686",
+      "After adding two CLI controls, #44073608503 passed 11 library+7 CLI+10 control+4 metamorphic = 32 per ABI; no test failures",
+      "Original GNU Prolog build/compiler CI #44073608537 passed on branch head b6b67906",
+      "Later documentation/CLI help changes do not touch semantics; exact final PR head requires fresh CI validation"
+    ],
+    "independent_witnesses": [],
+    "claim_to_artifact_map": [
+      "Cut scope -> engine.rs PendingGoal::cut_barrier and stack.truncate",
+      "Operator precedence -> syntax.rs control_primary/conjunction/disjunction",
+      "Ordered results -> tests/control.rs expected answers",
+      "Actual executable paths -> tests/cli.rs and examples/control.pl",
+      "Full ISO/WAM/FD compatibility -> no supporting artifact, status H"
+    ]
+  },
+  "round_trip": {
+    "edges": [
+      {
+        "from": "Prolog predicate invocation control obligation",
+        "to": "explicit cut barrier",
+        "preserved": [
+          "caller choicepoint boundary"
+        ],
+        "transformed": [
+          "WAM-like B0 conceptual scope into DFS Vec<State> index"
+        ],
+        "lost": [
+          "No mutable WAM trail or term heap"
+        ],
+        "remainder": [
+          "Nested module/meta-call control semantics untested"
+        ]
+      },
+      {
+        "from": "source conjunction/disjunction",
+        "to": "Term::Struct control AST",
+        "preserved": [
+          "Comma higher precedence and parentheses grouping"
+        ],
+        "transformed": [
+          "Control expression encoded as compound Term"
+        ],
+        "lost": [
+          "General ISO operator precedence table and control as data term semantics"
+        ],
+        "remainder": [
+          "meta-call and if-then"
+        ]
+      },
+      {
+        "from": "Rust solve and CLI",
+        "to": "test result interpretation",
+        "preserved": [
+          "Ordered answers, errors, explicit branch pruning"
+        ],
+        "transformed": [
+          "Analytically fixed cases compared to actual outputs"
+        ],
+        "lost": [
+          "Unexecuted Prolog program distribution and independent external oracle"
+        ],
+        "remainder": [
+          "Performance, memory and broad language compatibility"
+        ]
+      }
+    ]
+  },
+  "result": {
+    "observed": "M for prior tested code: Rust ELF64/i686 run #44073608503 passed 32/32 tests per ABI, including ten control and two new CLI cases; final documentation-head CI pending",
+    "effect_size": "0/10 scoped cut test failures, 0/7 CLI test failures, 0/15 prior Rust regression test failures per ABI; no measured speed or memory overhead",
+    "uncertainty": "Project-authored spec, code and expected answers share assumptions; not independently verified across ISO implementations",
+    "status_after": "M",
+    "retired_claims": [
+      "Cut and disjunction are unimplemented in the Rust-native interpreter",
+      "A production C/Rust portability layer is required to support control flow"
+    ],
+    "active_remainder": [
+      "No actual mutable term heap/trail choicepoint restoration, only snapshot substitutions",
+      "No if-then-else, meta-call, module scoping, arithmetic, negation or rational tree semantics",
+      "No independent differential control suite against external ISO Prolog implementation",
+      "No performance benchmark, memory or recursion stress across large programs",
+      "Full GNU Prolog compiler/WAM/FD implementation remains absent"
+    ]
+  }
+}
