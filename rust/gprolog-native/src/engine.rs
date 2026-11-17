@@ -444,4 +444,42 @@ mod tests {
         assert_eq!(answers("p(f(a,a)). p(f(a,b)).", "p(f(X,X)).").len(), 1);
         assert_eq!(answers("", "X = 1, X = 2.").len(), 0);
     }
+    #[test]
+    fn undo_trail_restores_partial_compound_unification() {
+        let mut store = BindingStore::default();
+        let before = store.mark();
+        let pattern = Term::Struct("pair".into(), vec![Term::Var(100), Term::Var(100)]);
+        let value = Term::Struct("pair".into(),
+            vec![Term::Atom("a".into()), Term::Atom("b".into())]);
+        assert!(!unify(&pattern, &value, &mut store, 0));
+        assert_eq!(store.trail.len(), 1);
+        assert!(store.values.contains_key(&100));
+        store.undo_to(before);
+        assert_eq!(store.mark(), before);
+        assert!(store.values.is_empty());
+    }
+
+    #[test]
+    fn trail_preserves_bindings_before_a_later_checkpoint() {
+        let mut store = BindingStore::default();
+        assert!(unify(&Term::Var(0), &Term::Var(1), &mut store, 0));
+        let saved = store.mark();
+        assert!(unify(&Term::Var(1), &Term::Atom("a".into()), &mut store, 0));
+        assert_eq!(root(&Term::Var(0), &store), Term::Atom("a".into()));
+        store.undo_to(saved);
+        assert_eq!(root(&Term::Var(0), &store), Term::Var(1));
+        assert!(!store.values.contains_key(&1));
+        store.undo_to(0);
+        assert_eq!(root(&Term::Var(0), &store), Term::Var(0));
+    }
+
+    #[test]
+    fn not_unifiable_probe_never_commits_partial_bindings() {
+        let p = parse_program("").unwrap();
+        let q = parse_query("(X=f(A), X \\= f(b); X=g(c)).", p.next_var).unwrap();
+        let result = solve(&p, &q, Limits::default()).unwrap();
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].bindings[0], ("X".into(), "g(c)".into()));
+    }
+
 }
