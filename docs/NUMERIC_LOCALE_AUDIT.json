@@ -1,0 +1,180 @@
+{
+  "task_id": "gprolog-numeric-locale-2026-11-17",
+  "claim": {
+    "text": "Normal GNU Prolog startup forces C numeric locale even when environment selects a comma-decimal locale; separately, source literals may or may not be invariant to a post-start locale mutation",
+    "scope": "Eight decimal literals, compiled/consulted mode, ELF64 and i686 ELF32, C/de_DE.UTF-8 environments",
+    "status_before": "H",
+    "assumptions": [
+      "GNU Prolog Pl_Start_Prolog invokes Set_Locale at process startup",
+      "de_DE.UTF-8 exists and has comma decimal point in CI",
+      "The test-only forced mutation executes strictly after Set_Locale"
+    ],
+    "forbidden_promotions": [
+      "No assertion that setting LC_ALL alone causes misparse",
+      "Do not conflate startup normalization with foreign postinit mutation resilience",
+      "No universal float/locale standards claim",
+      "No independent physical 32-bit or external-reproduction claim"
+    ]
+  },
+  "specification": {
+    "intended_object": "Two typed claims: normal startup normalization, and post-initialization mutation resilience",
+    "invariants": [
+      "C and de environment without mutation both use effective LC_NUMERIC=C at sscanf",
+      "All eight normal-mode literals match independent exact-rational binary64 bits",
+      "Forced mutation actually yields comma numeric locale",
+      "Any value mismatch under forced mutation explicitly falsifies its separate invariance claim"
+    ],
+    "known_answer_cases": [
+      "1.25 => 0x3ff4000000000000",
+      "0.1 => 0x3fb999999999999a",
+      "1.0 => 0x3ff0000000000000",
+      "5.0e-324 => 0x0000000000000001"
+    ]
+  },
+  "implementation": {
+    "artifact": "tests/float_indexing/numeric_locale_audit.py; .github/workflows/numeric-locale-audit.yml",
+    "commit": "audit/numeric-locale-invariant commit pending CI",
+    "environment": "Ubuntu 24.04 ELF64 and i686 multilib ELF32 with generated de_DE.UTF-8 locale",
+    "live_entrypoint": "Temporary engine.c and lexer_supp.c instrumentation; Python compare exact binary64 values, compiler/consulted execution",
+    "representation": "C runtime setlocale(LC_NUMERIC,NULL), localeconv()->decimal_point, %a hexadecimal float, source hash"
+  },
+  "metric": {
+    "name": "Two independent Boolean claims + count of byte-identical IEEE754 conversions and postinit mismatches",
+    "type": "typed_tuple",
+    "units": "ABI x regime x literal x execution mode",
+    "direction": "two_sided",
+    "raw_before_clipping": true,
+    "semantic_invariance_claimed": true,
+    "equivalence_attacks": [
+      "LC_ALL=C vs de_DE.UTF-8 before engine startup",
+      "deliberate numeric locale mutation after Set_Locale",
+      "decimal values 1.0 vs 1.25 under German scanner",
+      "scientific, small subnormal and maximum finite lexemes"
+    ]
+  },
+  "tests": {
+    "black_box": [
+      "Compiled and consulted Prolog fixtures with source token checks"
+    ],
+    "structural": [
+      "Trace active C numeric locale and decimal point at actual sscanf call",
+      "Verify instrumented engine applies forced mutation after Set_Locale, not before"
+    ],
+    "property_based": [
+      "not applicable: eight fixed boundary controls, no random generator"
+    ],
+    "metamorphic": [
+      "Same decimal source under C and German environment must yield exact matching bits on ordinary startup"
+    ],
+    "fuzzing": [
+      "not performed: bounded comparison, not coverage-guided fuzz"
+    ],
+    "historical": [
+      "Previous exact decimal audit 44035648344 under default C locale; prior source evidence set_locale.h"
+    ]
+  },
+  "controls": {
+    "matched_baselines": [
+      "Same instrumented candidate build tested across three environment regimes per ABI"
+    ],
+    "negative_controls": [
+      "Deliberate post-initialization locale mutation, measured effective locale",
+      "Value 1.0 unaffected by decimal separator as internal sanity check"
+    ],
+    "compute_parity": "Single binary per ABI, all regimes execute same compiled artifact",
+    "parameter_parity": "No tunable algorithm parameters",
+    "sampling_parity": "Eight fixed decimal literals and all three regimes before first execution",
+    "data_access_parity": "Each regime receives byte-identical Prolog sources with hashes"
+  },
+  "preregistration": {
+    "prediction": "Normal startup uses C numeric state and correct 64-bit values under both environment configurations; post-start forced German locale may demonstrate misparsing but its outcome is empirical",
+    "primary_metric": "Any ordinary startup value mismatch or failure to normalize LC_NUMERIC=C",
+    "uncertainty_method": "Deterministic per-fixture C observations; no statistical confidence interval",
+    "kill_condition": "Normal startup value mismatch, missing trace, wrong locale state or crash kills primary claim; forced differing bits kill separate mutation-resilience claim",
+    "stop_condition": "Do not change production lexer absent a real embedding use case and portable fix design",
+    "promotion_rule": "M for separately supported startup claim, R for any falsified post-init invariance; never promote both from a single green CI"
+  },
+  "evidence": {
+    "primary_sources": [
+      "https://github.com/jesusvilela/gprolog/blob/master/src/EnginePl/set_locale.h",
+      "https://github.com/jesusvilela/gprolog/blob/master/src/EnginePl/engine.c",
+      "https://github.com/jesusvilela/gprolog/blob/master/src/BipsPl/lexer_supp.c"
+    ],
+    "execution_records": [
+      "Not measured yet; initial source inspection demonstrates startup call Set_Locale and numeric C reset"
+    ],
+    "independent_witnesses": [],
+    "claim_to_artifact_map": [
+      "Startup normalization -> trace from actual Lexer_Number inside compiled gplc/gprolog",
+      "Forced postinit mutation -> temporary engine.c hook and observed comma decimal point",
+      "Correct decimal conversion -> exact rational oracle reused from previous bounded audit"
+    ]
+  },
+  "round_trip": {
+    "edges": [
+      {
+        "from": "environment LC_ALL",
+        "to": "Set_Locale",
+        "preserved": [
+          "environment locale consumed by LC_ALL reset"
+        ],
+        "transformed": [
+          "LC_NUMERIC explicitly set to C"
+        ],
+        "lost": [
+          "environment numeric locale intentionally discarded"
+        ],
+        "remainder": [
+          "post-start external mutation"
+        ]
+      },
+      {
+        "from": "Prolog decimal source",
+        "to": "libc sscanf at Lexer_Number",
+        "preserved": [
+          "token text"
+        ],
+        "transformed": [
+          "locale-sensitive C conversion to binary64"
+        ],
+        "lost": [
+          "scanner full-consumption information not recorded"
+        ],
+        "remainder": [
+          "non-C locale postinit"
+        ]
+      },
+      {
+        "from": "numeric conversion",
+        "to": "typed CI verdict",
+        "preserved": [
+          "actual C locale and bits"
+        ],
+        "transformed": [
+          "two separate invariance claim statuses"
+        ],
+        "lost": [
+          "other tools and threading not measured"
+        ],
+        "remainder": [
+          "portable remediation if needed"
+        ]
+      }
+    ]
+  },
+  "result": {
+    "observed": "No CI execution yet; actual source contains explicit C numeric locale reset in Set_Locale",
+    "effect_size": "not applicable before measurement",
+    "uncertainty": "Project-authored test-only hook and oracle; same Linux runner family",
+    "status_after": "H",
+    "retired_claims": [
+      "Unverified suggestion that LC_ALL=de_DE.UTF-8 alone necessarily breaks GNU Prolog float parsing"
+    ],
+    "active_remainder": [
+      "Run ELF64/i686 active-locale traces",
+      "Post-start foreign-code/embedding mutation behavior",
+      "Other OS/locale implementations",
+      "Thread-safety and independent reproduction"
+    ]
+  }
+}
