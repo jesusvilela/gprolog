@@ -10,6 +10,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import random
 import statistics
 import subprocess
 import tempfile
@@ -51,6 +52,26 @@ def corpus():
        "r(X,Y).", 32, 100000),
     ]
 
+def generated_corpus():
+    """Reproducible representation attacks with fully ground query answers."""
+    rng = random.Random(17262026)
+    templates = [
+        "p(X).", "q(X).", "p(X),q(Y).", "r(X,Y).",
+        "p(X),!,q(Y).", "r(X,Y),!.",
+        "pc(X).", "p(X);q(X).",
+        "p(X),(q(Y);Y=extra).",
+        "p(X),q(Y),fail;X=alternative,Y=alternative.",
+        "p(X),X \\= k999.",
+    ]
+    for i in range(128):
+        ps = rng.sample(range(18), rng.randint(1, 5))
+        qs = rng.sample(range(18), rng.randint(1, 4))
+        source = "".join(f"p(k{j}).\n" for j in ps)
+        source += "".join(f"q(m{j}).\n" for j in qs)
+        source += "r(X,Y):-p(X),q(Y).\npc(X):-p(X),!.\n"
+        yield (f"generated_{i:03d}", source, templates[rng.randrange(len(templates))],
+               96, 100000)
+
 def run(executable, source, query, max_solutions, max_steps, environment):
     cmd = [str(executable), str(source), query,
            "--max-solutions", str(max_solutions),
@@ -72,10 +93,14 @@ def timed(executable, source, query, max_solutions, max_steps, environment,
            str(executable), str(source), query,
            "--max-solutions", str(max_solutions),
            "--max-steps", str(max_steps)]
+    began = time.perf_counter_ns()
     p = subprocess.run(cmd, stdout=subprocess.PIPE,
         stderr=subprocess.PIPE, text=True, env=environment, timeout=40)
+    wall_ns = time.perf_counter_ns() - began
     elapsed, rss = dest.read_text().strip().split()
-    return {"wall_s": float(elapsed), "max_rss_kb": int(rss),
+    return {"wall_ns": wall_ns, "wall_s": wall_ns / 1_000_000_000,
+            "gnu_time_wall_rounded_s": float(elapsed),
+            "max_rss_kb": int(rss),
             "exit": p.returncode, "output_sha256":
             hashlib.sha256(p.stdout.encode()).hexdigest(),
             "stderr": p.stderr[:200]}
@@ -95,11 +120,12 @@ def main():
        "claim": "Behavioral equivalence for a fixed Rust-only subset; candidate trail vs snapshot baseline",
        "controls": "Same runner, identical source/query bytes, Rust toolchain 1.85.1, C locale; 64-bit only",
        "tests": [], "errors": [], "benchmark": {},
+       "generated_seed": 17262026, "generated_cases": 128,
        "independent_witness": False, "passed": False}
     output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="rust-trail-compare-") as tmp:
         root = Path(tmp)
-        for name, program, query, solutions, steps in corpus():
+        for name, program, query, solutions, steps in list(corpus()) + list(generated_corpus()):
             source = root / (name + ".pl")
             source.write_text(program, encoding="utf-8")
             a = run(baseline, source, query, solutions, steps, env)
@@ -114,9 +140,11 @@ def main():
             if not match:
                 report["errors"].append(name)
             print("PARITY", name, "PASS" if match else "FAIL", flush=True)
-        # 250 facts and 250 requested answers is an intentionally synthetic
-        # choice-point-heavy case; reporting does not imply broad speedup.
-        name, source_text, query, solutions, steps = corpus()[19]
+        # Enlarged predeclared synthetic choicepoint workload after first
+        # round was below GNU time precision (all samples 0.00 seconds).
+        # This compares TWO ALGORITHMS, not the trail contribution alone.
+        source_text = "".join(f"p(k{i}).\n" for i in range(20_000))
+        query, solutions, steps = "p(X).", 256, 1_000_000
         source = root / "synthetic_choice.pl"
         source.write_text(source_text, encoding="utf-8")
         times = {"baseline": [], "candidate": []}
@@ -133,7 +161,8 @@ def main():
                     env, root / f"measured-{key}-{i}.txt")
                 times[key].append(observation)
         report["benchmark"] = {
-            "scope": "Synthetic 250-fact exhaustive enumeration, not all Prolog workloads",
+            "scope": "Synthetic 20,000-fact source, first 256 answers; not all Prolog workloads",
+            "timing_resolution": "Python per-process perf_counter_ns incl. spawn and /usr/bin/time wrapper; not kernel nanosecond accuracy",
             "samples": times,
             "baseline_median_wall_s": statistics.median(x["wall_s"] for x in times["baseline"]),
             "candidate_median_wall_s": statistics.median(x["wall_s"] for x in times["candidate"]),
@@ -149,7 +178,7 @@ def main():
     report["passed"] = not report["errors"]
     output.write_text(json.dumps(report, indent=2, sort_keys=True)+"\n")
     print("DIFFERENTIAL", "PASS" if report["passed"] else "FAIL",
-          len(report["tests"]), "fixed programs", len(report["errors"]),
+          len(report["tests"]), "fixed+seeded programs", len(report["errors"]),
           "errors", flush=True)
     print("SYNTHETIC BASELINE", report["benchmark"]["baseline_median_wall_s"],
           "s", report["benchmark"]["baseline_median_max_rss_kb"], "KB")
