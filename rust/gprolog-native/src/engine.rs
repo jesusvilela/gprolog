@@ -6,6 +6,45 @@ use std::fmt;
 
 const MAX_RESOLUTION_DEPTH: usize = 256;
 
+#[derive(Clone, Copy, Debug)]
+pub struct Limits {
+    pub max_steps: usize,
+    pub max_solutions: usize,
+}
+impl Default for Limits {
+    fn default() -> Self {
+        Self { max_steps: 100_000, max_solutions: 256 }
+    }
+}
+#[derive(Clone, Debug, PartialEq)]
+pub struct Solution {
+    pub bindings: Vec<(String, String)>,
+}
+#[derive(Clone, Debug, PartialEq)]
+pub enum SolveError {
+    InvalidLimits,
+    StepBudgetExceeded(usize),
+    UnknownPredicate(String, usize),
+    UnsupportedGoal(String),
+    InvalidCutBarrier { boundary: usize, available: usize },
+}
+impl fmt::Display for SolveError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::InvalidLimits => write!(f, "search limits must be positive"),
+            Self::StepBudgetExceeded(limit) => write!(f, "search exhausted {limit} steps"),
+            Self::UnknownPredicate(name, arity) =>
+                write!(f, "unknown predicate {name}/{arity}"),
+            Self::UnsupportedGoal(goal) =>
+                write!(f, "unsupported callable goal: {goal}"),
+            Self::InvalidCutBarrier { boundary, available } =>
+                write!(f, "cut barrier {boundary} exceeds {available} remaining alternatives"),
+        }
+    }
+}
+impl std::error::Error for SolveError {}
+
+
 /// One mutable binding store per search, never per-choice copied maps.
 #[derive(Default)]
 struct BindingStore {
