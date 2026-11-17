@@ -1,0 +1,78 @@
+name: Rust native direct rewrite - executable and semantic gates
+
+on:
+  push:
+    branches: [rust/native-rewrite]
+    paths:
+      - 'rust/gprolog-native/**'
+      - '.github/workflows/rust-native.yml'
+      - 'docs/RUST_NATIVE_REWRITE.md'
+  pull_request:
+    paths:
+      - 'rust/gprolog-native/**'
+      - '.github/workflows/rust-native.yml'
+      - 'docs/RUST_NATIVE_REWRITE.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-rust:
+    name: Rust-only Prolog (${{ matrix.target }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            abi: ELF64
+          - target: i686-unknown-linux-gnu
+            abi: ELF32
+    steps:
+      - name: Checkout experiment
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Pin compiler and target
+        run: |
+          rustup toolchain install 1.85.1 --profile minimal
+          rustup target add ${{ matrix.target }} --toolchain 1.85.1
+          rustc +1.85.1 --version
+      - name: Install 32-bit C linker only (not a runtime bridge)
+        if: matrix.abi == 'ELF32'
+        run: |
+          sudo apt-get update -qq
+          sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y gcc-multilib libc6-dev-i386
+          cat > /tmp/gcc-i686 <<'SH'
+          #!/bin/sh
+          exec gcc -m32 "$@"
+          SH
+          chmod +x /tmp/gcc-i686
+      - name: Test native Rust language and backtracking semantics
+        run: |
+          set -eu
+          export CARGO_TERM_COLOR=never
+          if [ "${{ matrix.abi }}" = 'ELF32' ]; then
+            export CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER=/tmp/gcc-i686
+          fi
+          cargo +1.85.1 test --manifest-path rust/gprolog-native/Cargo.toml \
+            --target ${{ matrix.target }} --all-targets
+          cargo +1.85.1 build --release --manifest-path rust/gprolog-native/Cargo.toml \
+            --target ${{ matrix.target }}
+          EXE=rust/gprolog-native/target/${{ matrix.target }}/release/gprolog-rs
+          readelf -h "$EXE" | grep -E 'Class:.*${{ matrix.abi }}'
+          if ldd "$EXE" | grep -Ei 'libgprolog|libgprolog_float_decimal'; then
+            echo 'Unexpected GNU Prolog C bridge detected' >&2
+            exit 1
+          fi
+          "$EXE" rust/gprolog-native/examples/ancestors.pl 'ancestor(ada,Who).'
+          "$EXE" rust/gprolog-native/examples/lists.pl 'append([a,b],[c],Out).'
+      - name: Test summary
+        if: always()
+        run: |
+          echo '## Rust-native rewrite: honest scope' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Executable Horn-clause subset, not a full GNU Prolog replacement' >> "$GITHUB_STEP_SUMMARY"
+          echo '- No runtime FFI bridge, external Rust dependencies or GNU Prolog C execution' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Missing cut, FD constraints, WAM, ISO arithmetic and cyclic terms remain explicit gaps' >> "$GITHUB_STEP_SUMMARY"
