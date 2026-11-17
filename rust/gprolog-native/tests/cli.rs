@@ -55,3 +55,23 @@ fn strict_errors_and_budget_are_visible() {
     assert_eq!(exit, 2);
     assert!(errors.contains("unknown predicate missing/1"), "{errors}");
 }
+
+#[test]
+fn scoped_cut_and_later_disjunction_from_standalone_cli() {
+    let source = concat!(env!("CARGO_MANIFEST_DIR"), "/examples/control.pl");
+    let (code, output, errors) = binary(&[source, "commit(X)."]);
+    assert_eq!(code, 0, "{errors}");
+    assert_eq!(output, "X = a.\n");
+
+    let (code, output, errors) = binary(&[source, "late(X)."]);
+    assert_eq!(code, 0, "{errors}");
+    assert_eq!(output, "X = a.\nX = b.\n");
+}
+
+#[test]
+fn child_cut_does_not_prune_caller_disjunction_in_cli() {
+    let source = concat!(env!("CARGO_MANIFEST_DIR"), "/examples/control.pl");
+    let (code, output, errors) = binary(&[source, "outer(X)."]);
+    assert_eq!(code, 0, "{errors}");
+    assert_eq!(output, "X = left.\nX = left.\nX = right.\nX = right.\n");
+}
