@@ -63,7 +63,14 @@ def command(args, cwd, env, timeout=35):
         proc = subprocess.run([str(a) for a in args], cwd=cwd, env=env,
                               text=True, stdout=subprocess.PIPE,
                               stderr=subprocess.STDOUT, timeout=timeout)
-        status = ("suspected_crash" if proc.returncode < 0 or proc.returncode >= 128
+        diagnostic = proc.stdout.lower()
+        # GNU Prolog installs its own SIGSEGV handler and may exit with code 1.
+        # Never let a textual fatal segmentation diagnosis become a normal error.
+        signaled = any(token in diagnostic for token in (
+            "segmentation violation", "segmentation fault", "sigsegv",
+            "signal 11", "bad address:"))
+        status = ("crash_diagnostic" if signaled else
+                  "suspected_crash" if proc.returncode < 0 or proc.returncode >= 128
                   else "error" if proc.returncode else "success")
         return {"status": status, "exit": proc.returncode,
                 "stdout": proc.stdout[-3000:]}
@@ -135,6 +142,8 @@ def main():
         "hypothesis": "No candidate-only semantic or runtime failure on this predeclared float boundary suite",
         "baseline_ref": args.baseline_ref, "candidate_ref": args.candidate_ref,
         "host": platform.platform(), "cases": [], "failures": [],
+        "triage_cases": [], "original_first_run_status": "incorrectly green: fatal segmentation diagnostics were classified as ordinary errors",
+        "severity_policy": "shared baseline+cand crashes are failures, not safe parity",
         "nonfinite_semantics": "Observed only; no conformance claimed", "passed": False,
     }
     def persist():
@@ -161,7 +170,8 @@ def main():
                 before, after = state(b, mode), state(c, mode)
                 if before != after:
                     report["failures"].append(f"{label}/{mode}: baseline={before} candidate={after}")
-                if any(x in ("timeout", "suspected_crash", "compile_timeout", "compile_suspected_crash")
+                if any(x in ("timeout", "suspected_crash", "crash_diagnostic",
+                             "compile_timeout", "compile_suspected_crash", "compile_crash_diagnostic")
                        for x in (before, after)):
                     report["failures"].append(f"{label}/{mode}: crash or timeout")
                 if before == after == "success" and b[mode]["stdout"] != c[mode]["stdout"]:
@@ -182,6 +192,35 @@ def main():
             print(f"{label:31s} native={state(b,'native')}/{state(c,'native')} "
                   f"consulted={state(b,'consulted')}/{state(c,'consulted')} "
                   f"issues={issues}", flush=True)
+    # Post-observation diagnostics: intentionally separate from frozen 20 cases.
+    # These are for localization, NOT an opportunity to weaken the primary gate.
+    minimal = {
+        "load_only_positive": "value(1.0e309).\nmain :- halt.\n:- initialization(main).\n",
+        "load_only_negative": "value(-1.0e309).\nmain :- halt.\n:- initialization(main).\n",
+        "load_only_finite_control": "value(1.25).\nmain :- halt.\n:- initialization(main).\n",
+        "unify_positive": "main :- X = 1.0e309, (X = 1.0e309 -> halt ; halt(14)).\n:- initialization(main).\n",
+        "unify_negative": "main :- X = -1.0e309, (X = -1.0e309 -> halt ; halt(14)).\n:- initialization(main).\n",
+    }
+    with tempfile.TemporaryDirectory(prefix="gprolog-overflow-minimization-") as tmp:
+        for name, source in minimal.items():
+            row = {"name": name, "status": "posthoc_diagnostic",
+                   "source": source,
+                   "sha256": hashlib.sha256(source.encode()).hexdigest(),
+                   "versions": {}}
+            report["triage_cases"].append(row)
+            for version in ("baseline", "candidate"):
+                d = Path(tmp) / version / name
+                d.mkdir(parents=True)
+                p = d / "repro.pl"
+                p.write_text(source, encoding="utf-8")
+                env = dict(os.environ,
+                           PATH=str(bins[version]) + os.pathsep + os.environ.get("PATH", ""))
+                row["versions"][version] = command(
+                    [bins[version] / "gprolog", "--quiet", "--consult-file", "repro.pl"],
+                    d, env, 25)
+            persist()
+            print("TRIAGE", name, "baseline=" + row["versions"]["baseline"]["status"],
+                  "candidate=" + row["versions"]["candidate"]["status"], flush=True)
     report["passed"] = not report["failures"]
     persist()
     for issue in report["failures"]:
