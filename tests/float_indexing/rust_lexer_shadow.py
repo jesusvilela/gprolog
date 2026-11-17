@@ -99,10 +99,10 @@ def parsed_trace(path):
     rows = []
     for line in path.read_text(encoding="utf-8").splitlines():
         parts = line.split("|")
-        if len(parts) != 5 or parts[0] != "SHADOW":
+        if len(parts) != 6 or parts[0] != "SHADOW":
             raise RuntimeError("malformed R1 trace " + line[:120])
         rows.append({"token": parts[1], "c_accepted": int(parts[2]),
-                     "rust_status": int(parts[3]), "c_bits": parts[4]})
+                     "rust_status": int(parts[3]), "c_bits": parts[4], "rust_bits": parts[5]})
     return rows
 
 def fixture(decimal):
@@ -169,7 +169,8 @@ def verify(bin_dir, rust_library, output, abi):
                         if is_finite:
                             if int(e["c_bits"], 16) != expected_magnitude:
                                 result["errors"].append(key + ": C lexer bits do not match exact rational magnitude")
-                            # Rust bit pattern is checked below using the separate saved rust-bit field.
+                            if int(e["rust_bits"], 16) != expected_magnitude:
+                                result["errors"].append(key + ": Rust lexer bits do not match exact rational magnitude")
                         if e["rust_status"] < 0:
                             result["errors"].append(key + ": rust ABI invalid pointer/length")
                     output_text = actual["output"]
