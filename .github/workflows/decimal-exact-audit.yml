@@ -1,0 +1,90 @@
+name: Exact decimal binary64 boundary audit (test-only)
+
+on:
+  push:
+    branches: ['audit/exact-decimal-binary64']
+    paths:
+      - 'tests/float_indexing/decimal_exact_oracle.py'
+      - '.github/workflows/decimal-exact-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  exact-decimal:
+    name: Exact decimal oracle (${{ matrix.abi }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        abi: [elf64, elf32]
+    steps:
+      - name: Checkout pinned pre-guard compiler
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: jesusvilela/gprolog
+          ref: 46a32b7c2f0d2bbf904152543445315331498a8a
+          path: baseline
+          persist-credentials: false
+      - name: Checkout current audit branch
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          path: candidate
+          persist-credentials: false
+      - name: Independently check integer-rational IEEE754 oracle
+        run: python3 candidate/tests/float_indexing/decimal_exact_oracle.py selftest
+      - name: Install and verify i686 multilib toolchain
+        if: matrix.abi == 'elf32'
+        run: |
+          sudo apt-get update -qq
+          sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y gcc-multilib libc6-dev-i386
+          printf 'int main(void){return 0;}\n' | gcc -m32 -x c - -o /tmp/check-decimal-elf32
+          readelf -h /tmp/check-decimal-elf32 | grep -E 'Class:.*ELF32'
+      - name: Instrument both source checkouts for measurements only
+        run: |
+          python3 candidate/tests/float_indexing/decimal_exact_oracle.py instrument \
+            --lexer "$PWD/baseline/src/BipsPl/lexer_supp.c" \
+            --parser "$PWD/baseline/src/BipsPl/parser_supp.c" \
+            --engine "$PWD/baseline/src/EnginePl/wam_inst.c"
+          python3 candidate/tests/float_indexing/decimal_exact_oracle.py instrument \
+            --lexer "$PWD/candidate/src/BipsPl/lexer_supp.c" \
+            --parser "$PWD/candidate/src/BipsPl/parser_supp.c" \
+            --engine "$PWD/candidate/src/EnginePl/wam_inst.c"
+          git -C baseline status --short
+          git -C candidate status --short
+      - name: Build historical and candidate ELF64
+        if: matrix.abi == 'elf64'
+        run: |
+          for dir in baseline candidate; do
+            (cd "$dir/src" && ./configure --with-install-dir=in-place && make && make install)
+          done
+      - name: Build historical and candidate ELF32
+        if: matrix.abi == 'elf32'
+        run: |
+          for dir in baseline candidate; do
+            (cd "$dir/src" && \
+              CC='gcc -m32' CFLAGS='-O3 -fomit-frame-pointer -m32' LDFLAGS='-m32' \
+              ./configure --host=i686-pc-linux-gnu --with-install-dir=in-place && make && make install)
+          done
+      - name: Verify ELF class and exact decimal source-to-term value
+        run: |
+          for dir in baseline candidate; do
+            for program in gprolog gplc; do
+              file "$dir/bin/$program"
+              readelf -h "$dir/bin/$program" | grep -E "Class:.*ELF${{ matrix.abi == 'elf32' && '32' || '64' }}"
+            done
+          done
+          python3 candidate/tests/float_indexing/decimal_exact_oracle.py verify \
+            --baseline-bin "$PWD/baseline/bin" \
+            --candidate-bin "$PWD/candidate/bin" \
+            --output "$PWD/decimal-exact-${{ matrix.abi }}.json"
+      - name: Preserve actual C hex-float traces and expected binary64 bits
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: decimal-exact-${{ matrix.abi }}
+          path: decimal-exact-${{ matrix.abi }}.json
+          if-no-files-found: warn
+          retention-days: 30
