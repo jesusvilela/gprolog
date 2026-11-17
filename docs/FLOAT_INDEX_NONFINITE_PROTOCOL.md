@@ -60,3 +60,52 @@ the crash; these extra cases do not alter the primary gate.
 A red V2 CI is the honest outcome if the shared overflow crash
 persists. No lexical fix, runtime modification or claim of NaN/Inf
 syntax support is authorized by this experiment alone.
+
+
+## Results: V2 diagnostic classifier, 17 November 2026
+
+Corrected [CI #44031708229](https://github.com/jesusvilela/gprolog/actions/runs/44031708229)
+FAILED both ELF64 and i686 ELF32 jobs, exactly as the safety gate
+requires: four of the 20 frozen cases generated the diagnostic
+"Fatal Error: Segmentation Violation" during consulted execution,
+despite a normal nonzero exit code. The pinned historical compiler and
+the post-float-index fork had IDENTICAL behavior.
+
+| Case | Both native compilers | Both consulted engines |
+| :-- | :-- | :-- |
+| 1.7976931348623159e308 | rejected WAM: float expected | fatal segmentation diagnostic |
+| 1.0e309 | rejected WAM: float expected | fatal segmentation diagnostic |
+| 1.0e9999 | rejected WAM: float expected | fatal segmentation diagnostic |
+| Arithmetic with 1.0e309 | rejected WAM: float expected | fatal segmentation diagnostic |
+| -1.0e309 | rejected WAM: float expected | succeeds with matching answers |
+| Finite/subnormal/underflow/atom controls | passed | passed |
+| exp(1000.0) | caught float_overflow | caught float_overflow |
+| Division by zero | caught zero_divisor | caught zero_divisor |
+
+Observed WAM output for positive overflow includes get_float(inf,0)
+in the historical compiler versus switch_on_float([(inf,...),...])
+in the float-index candidate. Both generated forms are rejected by
+the WAM parser. This does NOT establish accepted non-finite syntax.
+
+The five additional posthoc minimizers give stronger localization:
+a trivial file containing value(1.0e309). with an initialization
+directive that simply halts reproduces the fatal diagnostic in both
+compilers on both ABIs. A corresponding negative-overflow fact and a
+finite fact do NOT. An ordinary unification goal using the positive
+overflow literal also fails; an indexed predicate is unnecessary.
+
+Raw 30-day CI artifacts: nonfinite-elf64 (ID 14305242828) and
+nonfinite-elf32 (ID 14305861852).
+
+Evidence ledger:
+- M: no candidate-only status or success-output divergence in 20
+  fixed cases on the two tested Linux ABIs
+- R: the original false-green nonfinite safety verdict and the claim
+  that nonzero exit status without a negative signal implies harmless
+  rejection; the V2 crash gate correctly fails
+- H: exact C-level cause of positive-overflow segfault; supported
+  lexical error policy; cross-platform and independent replication
+
+This is an UNRESOLVED SHARED CRASH, not a float-indexing regression.
+The audit PR stays draft and no source-level lexer fix is merged merely
+because this triage found a likely boundary.
