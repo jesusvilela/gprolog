@@ -4,7 +4,8 @@ use std::{env, fs, process};
 
 const USAGE: &str = "Usage: gprolog-rs <source.pl> '<query.>' [--max-steps N] [--max-solutions N]\n\
 Native Rust Horn-clause Prolog subset; no GNU Prolog C runtime dependency.\n\
-Unsupported: cut, disjunction, arithmetic, rational trees, dynamic code, FD constraints.";
+Supports: conjunction, disjunction (;), invocation-scoped cut (!), finite Horn rules.\n\\
+Unsupported: if-then (->), arithmetic, rational trees, dynamic code, FD constraints.";
 
 fn execute() -> Result<(), String> {
     let args: Vec<String> = env::args().skip(1).collect();
