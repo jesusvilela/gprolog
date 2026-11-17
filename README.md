@@ -43,6 +43,32 @@ ABIs. The [control protocol](docs/RUST_NATIVE_CONTROL.md) and [claim-level evide
 nested-call pruning, cut-and-failure, answer order and the known
 semantic boundaries.
 
+**Rust-owned trail, without a portability scaffold.** The
+[trail-backed engine](docs/RUST_NATIVE_TRAIL_PROTOCOL.md) replaces
+per-choice substitution-map copies with a single mutable Rust binding
+store, an undo trail and lazy choicepoint continuations.
+On ELF64 and i686 ELF32, **45/45 native Rust tests passed per ABI**.
+Against the pinned [pre-trail Rust baseline](https://github.com/jesusvilela/gprolog/commit/2f4c7b9346c7bcdfcd177907049f67cfe957f4d4),
+the new binary matched **149/149 complete CLI program/query results**,
+including 128 seeded representation attacks. The
+[typed trail evidence ledger](docs/RUST_NATIVE_TRAIL_AUDIT.json)
+preserves the failures, controls and raw observations.
+
+On a synthetic 20,000-fact source retrieving 256 answers, five paired
+runs **within each native ABI** produced the following descriptive
+medians (prior Rust snapshot / new trail+lazy engine):
+
+| ABI | Wall time | Peak resident memory |
+|---|---|---|
+| ELF64 | 22.62 / 16.51 ms | 16,492 / 14,200 KiB |
+| i686 ELF32 | 14.37 / 8.62 ms | 9,980 / 8,480 KiB |
+
+Both ABIs also matched **149/149 exact ordered CLI outputs** against
+the pinned snapshot reference. These numbers do not isolate trailing
+from lazy clause evaluation, nor establish broad Prolog performance.
+The earlier ELF64 result (20.99 / 15.03 ms) is retained in the
+audit's raw historical record rather than averaged across runners.
+
 This **does not** mean GNU Prolog has been fully rewritten.
 Full ISO operators, if-then, arithmetic, the WAM compiler/runtime,
 rational trees, finite-domain constraints and native backends remain missing.

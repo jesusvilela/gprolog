@@ -4,7 +4,6 @@ use crate::syntax::{Clause, Program, Query, Term};
 use std::collections::HashMap;
 use std::fmt;
 
-type Substitution = HashMap<usize, Term>;
 const MAX_RESOLUTION_DEPTH: usize = 256;
 
 #[derive(Clone, Copy, Debug)]
@@ -12,18 +11,15 @@ pub struct Limits {
     pub max_steps: usize,
     pub max_solutions: usize,
 }
-
 impl Default for Limits {
     fn default() -> Self {
         Self { max_steps: 100_000, max_solutions: 256 }
     }
 }
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct Solution {
     pub bindings: Vec<(String, String)>,
 }
-
 #[derive(Clone, Debug, PartialEq)]
 pub enum SolveError {
     InvalidLimits,
@@ -32,7 +28,6 @@ pub enum SolveError {
     UnsupportedGoal(String),
     InvalidCutBarrier { boundary: usize, available: usize },
 }
-
 impl fmt::Display for SolveError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -49,72 +44,91 @@ impl fmt::Display for SolveError {
 }
 impl std::error::Error for SolveError {}
 
+
+/// One mutable binding store per search, never per-choice copied maps.
+#[derive(Default)]
+struct BindingStore {
+    values: HashMap<usize, Term>,
+    trail: Vec<usize>,
+}
+impl BindingStore {
+    fn mark(&self) -> usize { self.trail.len() }
+    fn bind(&mut self, var: usize, value: Term) {
+        debug_assert!(!self.values.contains_key(&var));
+        self.values.insert(var, value);
+        self.trail.push(var);
+    }
+    fn undo_to(&mut self, mark: usize) {
+        assert!(mark <= self.trail.len(), "invalid trail checkpoint");
+        while self.trail.len() > mark {
+            let var = self.trail.pop().expect("checked trail length");
+            self.values.remove(&var);
+        }
+    }
+}
 #[derive(Clone)]
 struct PendingGoal {
     term: Term,
-    // Number of pre-existing choice alternatives when owning predicate
-    // was invoked. Cut may remove later alternatives, not caller choices.
     cut_barrier: usize,
 }
-
-#[derive(Clone)]
-struct State {
-    goals: Vec<PendingGoal>,
-    subst: Substitution,
+/// Deferred branch; only the chosen clause is unified with live bindings.
+enum Work {
+    Resume(Vec<PendingGoal>),
+    TryClause {
+        goal: Term,
+        clause_index: usize,
+        continuation: Vec<PendingGoal>,
+        invocation_barrier: usize,
+    },
 }
-
-fn root(term: &Term, subst: &Substitution) -> Term {
+struct ChoicePoint {
+    trail_mark: usize,
+    next: Work,
+}
+fn root(term: &Term, bindings: &BindingStore) -> Term {
     let mut node = term.clone();
-    // A finite occurs-check prevents cycles at binding time. The extra
-    // bound is defensive against corrupt/future substitution input.
     for _ in 0..MAX_RESOLUTION_DEPTH * 1024 {
-        if let Term::Var(id) = &node {
-            if let Some(bound) = subst.get(id) {
-                node = bound.clone();
-                continue;
+        match &node {
+            Term::Var(id) => {
+                if let Some(bound) = bindings.values.get(id) {
+                    node = bound.clone();
+                    continue;
+                }
+                return node;
             }
+            _ => return node,
         }
-        break;
     }
     node
 }
-
-fn occurs(variable: usize, term: &Term, subst: &Substitution, depth: usize) -> bool {
-    if depth >= MAX_RESOLUTION_DEPTH {
-        // Conservative rejection rather than accepting a potentially
-        // recursive substitution we have not inspected.
-        return true;
-    }
-    match root(term, subst) {
+fn occurs(variable: usize, term: &Term, bindings: &BindingStore, depth: usize) -> bool {
+    if depth >= MAX_RESOLUTION_DEPTH { return true; }
+    match root(term, bindings) {
         Term::Var(id) => id == variable,
         Term::Struct(_, args) =>
-            args.iter().any(|arg| occurs(variable, arg, subst, depth + 1)),
+            args.iter().any(|arg| occurs(variable, arg, bindings, depth + 1)),
         _ => false,
     }
 }
-
-fn unify(a: &Term, b: &Term, subst: &mut Substitution, depth: usize) -> bool {
+/// Destructive unifier: caller must undo writes after any failed match.
+fn unify(a: &Term, b: &Term, bindings: &mut BindingStore, depth: usize) -> bool {
     if depth >= MAX_RESOLUTION_DEPTH { return false; }
-    let lhs = root(a, subst);
-    let rhs = root(b, subst);
+    let lhs = root(a, bindings);
+    let rhs = root(b, bindings);
     match (lhs, rhs) {
         (Term::Var(a), Term::Var(b)) if a == b => true,
         (Term::Var(id), value) | (value, Term::Var(id)) => {
-            if occurs(id, &value, subst, 0) { return false; }
-            subst.insert(id, value);
+            if occurs(id, &value, bindings, 0) { return false; }
+            bindings.bind(id, value);
             true
         }
         (Term::Atom(a), Term::Atom(b)) => a == b,
         (Term::Integer(a), Term::Integer(b)) => a == b,
-        (Term::Float(a), Term::Float(b)) => {
-            // Preserve binary64 identity for this first direct interpreter.
-            // A more complete ISO-number semantics audit is still required.
-            a == b
-        }
+        (Term::Float(a), Term::Float(b)) => a == b,
         (Term::Struct(an, aa), Term::Struct(bn, ba)) => {
             an == bn && aa.len() == ba.len() &&
                 aa.iter().zip(ba.iter())
-                    .all(|(x, y)| unify(x, y, subst, depth + 1))
+                    .all(|(x, y)| unify(x, y, bindings, depth + 1))
         }
         _ => false,
     }
@@ -161,11 +175,11 @@ fn show_atom(name: &str) -> String {
     }
 }
 
-fn show_term(term: &Term, subst: &Substitution, depth: usize) -> String {
+fn show_term(term: &Term, bindings: &BindingStore, depth: usize) -> String {
     if depth > MAX_RESOLUTION_DEPTH {
         return "<depth-limit>".into();
     }
-    let value = root(term, subst);
+    let value = root(term, bindings);
     match value {
         Term::Var(id) => format!("_G{id}"),
         Term::Atom(name) => show_atom(&name),
@@ -181,9 +195,9 @@ fn show_term(term: &Term, subst: &Substitution, depth: usize) -> String {
             let mut cells = Vec::new();
             let mut current = Term::Struct(name, args);
             for _ in 0..MAX_RESOLUTION_DEPTH {
-                match root(&current, subst) {
+                match root(&current, bindings) {
                     Term::Struct(n, args) if n == "." && args.len() == 2 => {
-                        cells.push(show_term(&args[0], subst, depth + 1));
+                        cells.push(show_term(&args[0], bindings, depth + 1));
                         current = args[1].clone();
                     }
                     Term::Atom(n) if n == "[]" => {
@@ -191,7 +205,7 @@ fn show_term(term: &Term, subst: &Substitution, depth: usize) -> String {
                     }
                     tail => {
                         return format!("[{}|{}]",
-                            cells.join(","), show_term(&tail, subst, depth + 1));
+                            cells.join(","), show_term(&tail, bindings, depth + 1));
                     }
                 }
             }
@@ -199,7 +213,7 @@ fn show_term(term: &Term, subst: &Substitution, depth: usize) -> String {
         }
         Term::Struct(name, args) => {
             let values: Vec<_> = args.iter()
-                .map(|x| show_term(x, subst, depth + 1)).collect();
+                .map(|x| show_term(x, bindings, depth + 1)).collect();
             format!("{}({})", show_atom(&name), values.join(","))
         }
     }
@@ -212,132 +226,144 @@ pub fn solve(program: &Program, query: &Query, limits: Limits)
         return Err(SolveError::InvalidLimits);
     }
     let mut next_var = query.next_var.max(program.next_var);
-    let mut stack = vec![State {
-        goals: query.goals.iter().cloned()
-            .map(|term| PendingGoal { term, cut_barrier: 0 })
-            .collect(),
-        subst: HashMap::new(),
-    }];
+    let mut bindings = BindingStore::default();
+    let mut alternatives: Vec<ChoicePoint> = Vec::new();
+    let mut active = Some(Work::Resume(query.goals.iter().cloned()
+        .map(|term| PendingGoal { term, cut_barrier: 0 }).collect()));
     let mut solutions = Vec::new();
     let mut steps = 0;
-    while let Some(state) = stack.pop() {
+    loop {
+        let task = match active.take() {
+            Some(task) => task,
+            None => match alternatives.pop() {
+                Some(point) => {
+                    // Redo from precisely the point saved for that choice.
+                    bindings.undo_to(point.trail_mark);
+                    point.next
+                }
+                None => break,
+            },
+        };
         if steps >= limits.max_steps {
             return Err(SolveError::StepBudgetExceeded(limits.max_steps));
         }
         steps += 1;
-        if state.goals.is_empty() {
-            let bindings = query.variables.iter().map(|(name, id)| {
-                (name.clone(), show_term(&Term::Var(*id), &state.subst, 0))
-            }).collect();
-            solutions.push(Solution { bindings });
-            if solutions.len() >= limits.max_solutions { return Ok(solutions); }
-            continue;
-        }
-        let mut remaining = state.goals.into_iter();
-        let pending = remaining.next().expect("nonempty checked");
-        let rest: Vec<PendingGoal> = remaining.collect();
-        let cut_barrier = pending.cut_barrier;
-        let goal_value = root(&pending.term, &state.subst);
-        match &goal_value {
-            Term::Atom(name) if name == "!" => {
-                if cut_barrier > stack.len() {
-                    return Err(SolveError::InvalidCutBarrier {
-                        boundary: cut_barrier,
-                        available: stack.len(),
+        match task {
+            Work::TryClause { goal, clause_index, continuation, invocation_barrier } => {
+                let fresh = fresh_clause(&program.clauses[clause_index], &mut next_var);
+                let mark = bindings.mark();
+                if unify(&goal, &fresh.head, &mut bindings, 0) {
+                    let mut goals: Vec<PendingGoal> = fresh.body.into_iter()
+                        .map(|term| PendingGoal { term, cut_barrier: invocation_barrier })
+                        .collect();
+                    goals.extend(continuation);
+                    active = Some(Work::Resume(goals));
+                } else {
+                    // A mismatched compound head may have bound a prefix.
+                    bindings.undo_to(mark);
+                }
+            }
+            Work::Resume(goals) => {
+                if goals.is_empty() {
+                    let answers = query.variables.iter().map(|(name, id)| {
+                        (name.clone(), show_term(&Term::Var(*id), &bindings, 0))
+                    }).collect();
+                    solutions.push(Solution { bindings: answers });
+                    if solutions.len() >= limits.max_solutions { return Ok(solutions); }
+                    // Redo via the nearest pending choicepoint.
+                    continue;
+                }
+                let mut remaining = goals.into_iter();
+                let pending = remaining.next().expect("nonempty checked");
+                let rest: Vec<PendingGoal> = remaining.collect();
+                let cut_barrier = pending.cut_barrier;
+                let goal_value = root(&pending.term, &bindings);
+                match &goal_value {
+                    Term::Atom(name) if name == "!" => {
+                        if cut_barrier > alternatives.len() {
+                            return Err(SolveError::InvalidCutBarrier {
+                                boundary: cut_barrier, available: alternatives.len(),
+                            });
+                        }
+                        // Cut forgets alternatives, NOT live bindings.
+                        alternatives.truncate(cut_barrier);
+                        active = Some(Work::Resume(rest));
+                        continue;
+                    }
+                    Term::Struct(name, args) if name == "," && args.len() == 2 => {
+                        let mut next = Vec::with_capacity(rest.len() + 2);
+                        next.push(PendingGoal { term: args[0].clone(), cut_barrier });
+                        next.push(PendingGoal { term: args[1].clone(), cut_barrier });
+                        next.extend(rest);
+                        active = Some(Work::Resume(next));
+                        continue;
+                    }
+                    Term::Struct(name, args) if name == ";" && args.len() == 2 => {
+                        let mut right = Vec::with_capacity(rest.len() + 1);
+                        right.push(PendingGoal { term: args[1].clone(), cut_barrier });
+                        right.extend(rest.iter().cloned());
+                        alternatives.push(ChoicePoint {
+                            trail_mark: bindings.mark(), next: Work::Resume(right),
+                        });
+                        let mut left = Vec::with_capacity(rest.len() + 1);
+                        left.push(PendingGoal { term: args[0].clone(), cut_barrier });
+                        left.extend(rest);
+                        active = Some(Work::Resume(left));
+                        continue;
+                    }
+                    Term::Atom(name) if name == "true" => {
+                        active = Some(Work::Resume(rest));
+                        continue;
+                    }
+                    Term::Atom(name) if name == "fail" => continue,
+                    Term::Struct(name, args) if name == "=" && args.len() == 2 => {
+                        let mark = bindings.mark();
+                        if unify(&args[0], &args[1], &mut bindings, 0) {
+                            active = Some(Work::Resume(rest));
+                        } else {
+                            bindings.undo_to(mark);
+                        }
+                        continue;
+                    }
+                    Term::Struct(name, args) if name == "\\=" && args.len() == 2 => {
+                        let mark = bindings.mark();
+                        let unifiable = unify(&args[0], &args[1], &mut bindings, 0);
+                        // Speculative unification never retains its writes.
+                        bindings.undo_to(mark);
+                        if !unifiable { active = Some(Work::Resume(rest)); }
+                        continue;
+                    }
+                    _ => {}
+                }
+
+                let Some((name, arity)) = goal_value.functor() else {
+                    return Err(SolveError::UnsupportedGoal(
+                        show_term(&goal_value, &bindings, 0)));
+                };
+                let clauses: Vec<usize> = program.clauses.iter().enumerate()
+                    .filter_map(|(i, clause)|
+                        (clause.head.functor() == Some((name, arity))).then_some(i))
+                    .collect();
+                if clauses.is_empty() {
+                    return Err(SolveError::UnknownPredicate(name.into(), arity));
+                }
+                // Capture the invocation's caller alternatives BEFORE
+                // pushing this predicate's alternative clauses.
+                let invocation_barrier = alternatives.len();
+                let mark = bindings.mark();
+                for &index in clauses.iter().skip(1).rev() {
+                    alternatives.push(ChoicePoint {
+                        trail_mark: mark,
+                        next: Work::TryClause {
+                            goal: goal_value.clone(), clause_index: index,
+                            continuation: rest.clone(), invocation_barrier,
+                        },
                     });
                 }
-                // This discards choices created since invocation entry,
-                // including earlier body disjunctions and same-predicate
-                // alternative clauses, while preserving caller choices.
-                stack.truncate(cut_barrier);
-                stack.push(State { goals: rest, subst: state.subst });
-                continue;
-            }
-            Term::Struct(name, args) if name == "," && args.len() == 2 => {
-                let mut goals = Vec::with_capacity(rest.len() + 2);
-                goals.push(PendingGoal {
-                    term: args[0].clone(),
-                    cut_barrier,
+                active = Some(Work::TryClause {
+                    goal: goal_value, clause_index: clauses[0],
+                    continuation: rest, invocation_barrier,
                 });
-                goals.push(PendingGoal {
-                    term: args[1].clone(),
-                    cut_barrier,
-                });
-                goals.extend(rest);
-                stack.push(State { goals, subst: state.subst });
-                continue;
-            }
-            Term::Struct(name, args) if name == ";" && args.len() == 2 => {
-                let mut right = Vec::with_capacity(rest.len() + 1);
-                right.push(PendingGoal {
-                    term: args[1].clone(),
-                    cut_barrier,
-                });
-                right.extend(rest.iter().cloned());
-                stack.push(State {
-                    goals: right,
-                    subst: state.subst.clone(),
-                });
-                let mut left = Vec::with_capacity(rest.len() + 1);
-                left.push(PendingGoal {
-                    term: args[0].clone(),
-                    cut_barrier,
-                });
-                left.extend(rest);
-                stack.push(State {
-                    goals: left,
-                    subst: state.subst,
-                });
-                continue;
-            }
-            Term::Atom(name) if name == "true" => {
-                stack.push(State { goals: rest, subst: state.subst });
-                continue;
-            }
-            Term::Atom(name) if name == "fail" => continue,
-            Term::Struct(name, args) if name == "=" && args.len() == 2 => {
-                let mut subst = state.subst;
-                if unify(&args[0], &args[1], &mut subst, 0) {
-                    stack.push(State { goals: rest, subst });
-                }
-                continue;
-            }
-            Term::Struct(name, args) if name == "\\=" && args.len() == 2 => {
-                let mut tentative = state.subst.clone();
-                if !unify(&args[0], &args[1], &mut tentative, 0) {
-                    stack.push(State { goals: rest, subst: state.subst });
-                }
-                continue;
-            }
-            _ => {}
-        }
-
-        let Some((name, arity)) = goal_value.functor() else {
-            return Err(SolveError::UnsupportedGoal(
-                show_term(&goal_value, &state.subst, 0)));
-        };
-        let clauses: Vec<_> = program.clauses.iter()
-            .filter(|clause| clause.head.functor() == Some((name, arity)))
-            .collect();
-        if clauses.is_empty() {
-            return Err(SolveError::UnknownPredicate(name.into(), arity));
-        }
-        // The barrier belongs to THIS invocation, before pushing its
-        // alternative clauses; caller continuation goals keep their own
-        // previous barriers (never blindly relabel the entire rest).
-        let invocation_barrier = stack.len();
-        for clause in clauses.into_iter().rev() {
-            let new_clause = fresh_clause(clause, &mut next_var);
-            let mut new_subst = state.subst.clone();
-            if unify(&goal_value, &new_clause.head, &mut new_subst, 0) {
-                let mut goals: Vec<PendingGoal> = new_clause.body.into_iter()
-                    .map(|term| PendingGoal {
-                        term,
-                        cut_barrier: invocation_barrier,
-                    })
-                    .collect();
-                goals.extend(rest.iter().cloned());
-                stack.push(State { goals, subst: new_subst });
             }
         }
     }
@@ -418,4 +444,42 @@ mod tests {
         assert_eq!(answers("p(f(a,a)). p(f(a,b)).", "p(f(X,X)).").len(), 1);
         assert_eq!(answers("", "X = 1, X = 2.").len(), 0);
     }
+    #[test]
+    fn undo_trail_restores_partial_compound_unification() {
+        let mut store = BindingStore::default();
+        let before = store.mark();
+        let pattern = Term::Struct("pair".into(), vec![Term::Var(100), Term::Var(100)]);
+        let value = Term::Struct("pair".into(),
+            vec![Term::Atom("a".into()), Term::Atom("b".into())]);
+        assert!(!unify(&pattern, &value, &mut store, 0));
+        assert_eq!(store.trail.len(), 1);
+        assert!(store.values.contains_key(&100));
+        store.undo_to(before);
+        assert_eq!(store.mark(), before);
+        assert!(store.values.is_empty());
+    }
+
+    #[test]
+    fn trail_preserves_bindings_before_a_later_checkpoint() {
+        let mut store = BindingStore::default();
+        assert!(unify(&Term::Var(0), &Term::Var(1), &mut store, 0));
+        let saved = store.mark();
+        assert!(unify(&Term::Var(1), &Term::Atom("a".into()), &mut store, 0));
+        assert_eq!(root(&Term::Var(0), &store), Term::Atom("a".into()));
+        store.undo_to(saved);
+        assert_eq!(root(&Term::Var(0), &store), Term::Var(1));
+        assert!(!store.values.contains_key(&1));
+        store.undo_to(0);
+        assert_eq!(root(&Term::Var(0), &store), Term::Var(0));
+    }
+
+    #[test]
+    fn not_unifiable_probe_never_commits_partial_bindings() {
+        let p = parse_program("").unwrap();
+        let q = parse_query("(X=f(A), X \\= f(b); X=g(c)).", p.next_var).unwrap();
+        let result = solve(&p, &q, Limits::default()).unwrap();
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].bindings[0], ("X".into(), "g(c)".into()));
+    }
+
 }

@@ -1,0 +1,96 @@
+name: Rust trail vs snapshot baseline differential
+
+on:
+  push:
+    branches: [master, 'rust/native-trail-choicepoints']
+    paths:
+      - 'rust/gprolog-native/**'
+      - 'tests/rust_trail/**'
+      - '.github/workflows/rust-trail-differential.yml'
+      - 'docs/RUST_NATIVE_TRAIL_PROTOCOL.md'
+      - 'docs/RUST_NATIVE_TRAIL_AUDIT.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot-versus-trail:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        abi: [elf64, elf32]
+    steps:
+      - name: Checkout trail branch and fixed historical Rust baseline commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          fetch-depth: 30
+      - name: Pin Rust toolchain
+        run: |
+          rustup toolchain install 1.85.1 --profile minimal
+          rustc +1.85.1 --version
+      - name: Select real ELF64 or i686 ELF32 Rust compilation
+        run: |
+          if [ "${{ matrix.abi }}" = "elf32" ]; then
+            sudo apt-get update -qq
+            sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y gcc-multilib libc6-dev-i386
+            rustup target add i686-unknown-linux-gnu --toolchain 1.85.1
+            cat > /tmp/gcc-i686 <<'SH'
+          #!/bin/sh
+          exec gcc -m32 "$@"
+          SH
+            chmod +x /tmp/gcc-i686
+            echo "TARGET=i686-unknown-linux-gnu" >> "$GITHUB_ENV"
+            echo "CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER=/tmp/gcc-i686" >> "$GITHUB_ENV"
+          else
+            echo "TARGET=x86_64-unknown-linux-gnu" >> "$GITHUB_ENV"
+          fi
+      - name: Structural check that choicepoints do not copy substitution maps
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s = Path("rust/gprolog-native/src/engine.rs").read_text()
+          for marker in ["struct BindingStore", "struct ChoicePoint",
+                         "fn undo_to", "trail_mark: usize", "enum Work"]:
+              assert marker in s, "missing expected trail marker: " + marker
+          for forbidden in ["subst.clone()", "subst: Substitution"]:
+              assert forbidden not in s, "snapshot implementation regression: " + forbidden
+          PY
+      - name: Materialize pre-trail snapshot at immutable commit
+        run: |
+          git cat-file -e 2f4c7b9346c7bcdfcd177907049f67cfe957f4d4^{commit}
+          git worktree add --detach /tmp/gprolog-rust-snapshot 2f4c7b9346c7bcdfcd177907049f67cfe957f4d4
+          git -C /tmp/gprolog-rust-snapshot rev-parse HEAD
+      - name: Build both Rust-native binaries without GNU Prolog C dependency
+        run: |
+          CARGO_TARGET_DIR=/tmp/snapshot-target cargo +1.85.1 build --release \
+            --target "$TARGET" --manifest-path /tmp/gprolog-rust-snapshot/Cargo.toml
+          CARGO_TARGET_DIR=/tmp/trail-target cargo +1.85.1 build --release \
+            --target "$TARGET" --manifest-path Cargo.toml
+          for binary in /tmp/snapshot-target/"$TARGET"/release/gprolog-rs /tmp/trail-target/"$TARGET"/release/gprolog-rs; do
+            readelf -h "$binary" | grep -E "Class:.*ELF${{ matrix.abi == 'elf32' && '32' || '64' }}"
+            if ldd "$binary" | grep -E 'libgprolog|libgprolog_float_decimal'; then
+              echo "Unexpected C runtime dependency" >&2
+              exit 1
+            fi
+          done
+      - name: Verify exact full CLI parity and collect paired synthetic observations
+        run: |
+          python3 tests/rust_trail/differential.py \
+            --baseline /tmp/snapshot-target/"$TARGET"/release/gprolog-rs \
+            --candidate /tmp/trail-target/"$TARGET"/release/gprolog-rs \
+            --abi ${{ matrix.abi }} \
+            --output "$PWD/rust-trail-differential-${{ matrix.abi }}.json"
+      - name: Preserve complete raw observations including negative results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: rust-trail-differential-${{ matrix.abi }}
+          path: |
+            rust-trail-differential-${{ matrix.abi }}.json
+            docs/RUST_NATIVE_TRAIL_AUDIT.json
+          if-no-files-found: warn
+          retention-days: 30

@@ -70,7 +70,14 @@ tests/control.rs and tests/cli.rs. Consult the frozen operational
 protocol at ../../docs/RUST_NATIVE_CONTROL.md and bounded measurements
 in ../../docs/RUST_NATIVE_CONTROL_AUDIT.json.
 
-**Representation boundary:** this engine still clones substitutions
-per choice state. The control scopes are now testable, but a mutable
-term heap, trail/unwind rules, attributed constraints and compiled
-WAM execution remain later native Rust obligations. No C fallback.
+**Representation boundary (updated):** the engine now keeps a single
+mutable Rust binding map with a LIFO undo trail and deferred choice
+frames recording exact trail checkpoints. It no longer clones the
+substitution map for each branch. The original control-flow audit
+described the earlier, snapshot-based implementation.
+
+See ../../docs/RUST_NATIVE_TRAIL_PROTOCOL.md and
+../../docs/RUST_NATIVE_TRAIL_AUDIT.json. This is NOT a WAM term heap:
+AST terms remain separately owned. Full term-cell allocation,
+garbage collection, attributed constraints and compiled WAM execution
+are still Rust implementation obligations. No C fallback.
