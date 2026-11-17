@@ -110,3 +110,9 @@ acceptance outside the declared subset, a resource-budget bypass
 or a crash. No production migration or rewrite completion claim
 is authorized from a green smoke test. Once the first executable
 is tested, promote only the implemented subset from H to M.
+
+## First native execution (17 November 2026)
+
+The standalone Rust CLI now exists at `rust/gprolog-native`, with a **root Cargo workspace** defaulting to it. No GNU Prolog C engine or C/Rust bridge is loaded. [Native CI #44052988720](https://github.com/jesusvilela/gprolog/actions/runs/44052988720) passed on Linux ELF64 and genuine i686 ELF32: **11 parser/unifier/engine tests, five CLI integration tests and four deterministic metamorphic tests per ABI**, zero failures. The malformed-input metamorphic test additionally exercised 512 seeded ASCII cases without a parser panic. The tests confirmed recursive ancestry, member and append lists, variable scoping, source-order backtracking, failure/unknown-predicate distinctions and explicit search-budget errors.
+
+This promotes **only the documented finite Horn-clause subset to M (measured)**. The complete GNU Prolog rewrite remains H (unimplemented). The existing C source is retained solely as an offline oracle, while the old R0/R1 bridge strategy is explicitly superseded. See [RUST_NATIVE_AUDIT.json](RUST_NATIVE_AUDIT.json) for the typed claim and tests ledger.

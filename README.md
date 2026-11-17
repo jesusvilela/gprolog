@@ -34,6 +34,8 @@ cargo +1.85.1 test
 cargo +1.85.1 run -- rust/gprolog-native/examples/ancestors.pl 'ancestor(ada,Who).'
 ```
 
+The initial [ELF64/i686 native CI](https://github.com/jesusvilela/gprolog/actions/runs/44052988720) has passed **20/20 unit/integration/metamorphic tests per ABI**, including deterministic parser stress cases. This is a working *finite Horn-clause subset*, not full GNU Prolog. Read the [exact evidence and remaining obligations](docs/RUST_NATIVE_AUDIT.json).
+
 This **does not** mean GNU Prolog has been fully rewritten. Cut,
 disjunction, arithmetic, the WAM compiler/runtime, cyclic terms,
 finite-domain constraints and native backends are still missing.
