@@ -1,0 +1,103 @@
+name: Rust R1 live GNU Prolog lexer shadow audit
+
+on:
+  push:
+    branches: ['rust/r1-shadow-lexer']
+    paths:
+      - 'tests/float_indexing/rust_lexer_shadow.py'
+      - '.github/workflows/rust-r1-lexer-shadow.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live-lexer-shadow:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        abi: [elf64, elf32]
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Install pinned Rust compiler
+        run: |
+          rustup toolchain install 1.85.1 --profile minimal
+          cargo +1.85.1 --version
+      - name: Generate real German locale
+        run: |
+          sudo apt-get update -qq
+          sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y locales
+          sudo sed -i 's/^# *de_DE.UTF-8 UTF-8/de_DE.UTF-8 UTF-8/' /etc/locale.gen
+          sudo locale-gen de_DE.UTF-8
+          locale -a | grep -iE '^de_DE[.]utf8$'
+          LC_ALL=de_DE.UTF-8 locale decimal_point
+      - name: Install 32-bit Rust and C toolchains
+        if: matrix.abi == 'elf32'
+        run: |
+          sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y gcc-multilib libc6-dev-i386
+          rustup target add i686-unknown-linux-gnu --toolchain 1.85.1
+          cat > /tmp/gcc-i686 <<'SH'
+          #!/bin/sh
+          exec gcc -m32 "$@"
+          SH
+          chmod +x /tmp/gcc-i686
+      - name: Build target-matched Rust cdylib
+        run: |
+          set -eu
+          if [ "${{ matrix.abi }}" = "elf32" ]; then
+            export TARGET=i686-unknown-linux-gnu
+            export CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER=/tmp/gcc-i686
+          else
+            export TARGET=x86_64-unknown-linux-gnu
+          fi
+          cargo +1.85.1 build --release --manifest-path rust/float-decimal/Cargo.toml --target "$TARGET"
+          mkdir -p /tmp/gprolog-r1
+          cp rust/float-decimal/target/"$TARGET"/release/libgprolog_float_decimal.so /tmp/gprolog-r1/libgprolog_float_decimal.so
+          readelf -h /tmp/gprolog-r1/libgprolog_float_decimal.so | grep -E "Class:.*ELF${{ matrix.abi == 'elf32' && '32' || '64' }}"
+      - name: Inject test-only C observer into actual Lexer_Number
+        run: |
+          python3 tests/float_indexing/rust_lexer_shadow.py instrument --lexer src/BipsPl/lexer_supp.c
+          git diff --check
+          git diff --name-only -- src/BipsPl/lexer_supp.c
+      - name: Build instrumented GNU Prolog native compiler ELF64
+        if: matrix.abi == 'elf64'
+        working-directory: src
+        run: |
+          ./configure --with-install-dir=in-place
+          make
+          make install
+      - name: Build instrumented GNU Prolog native compiler ELF32
+        if: matrix.abi == 'elf32'
+        working-directory: src
+        run: |
+          CC='gcc -m32' CFLAGS='-O3 -fomit-frame-pointer -m32' LDFLAGS='-m32' \
+            ./configure --host=i686-pc-linux-gnu --with-install-dir=in-place
+          make
+          make install
+      - name: Compare original C and Rust shadow on actual source tokens
+        run: |
+          for prog in bin/gprolog bin/gplc; do
+            readelf -h "$prog" | grep -E "Class:.*ELF${{ matrix.abi == 'elf32' && '32' || '64' }}"
+          done
+          python3 tests/float_indexing/rust_lexer_shadow.py verify \
+            --bin-dir "$PWD/bin" \
+            --rust-library /tmp/gprolog-r1/libgprolog_float_decimal.so \
+            --abi ${{ matrix.abi }} \
+            --output "$PWD/rust-r1-${{ matrix.abi }}.json"
+      - name: Existing compiler semantic checks in shadow-build, shadow disabled
+        run: |
+          python3 tests/goal_expansion/run.py --bin-dir "$PWD/bin"
+          python3 tests/float_indexing/run.py --bin-dir "$PWD/bin"
+      - name: Preserve R1 live C ABI evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: rust-r1-${{ matrix.abi }}
+          path: rust-r1-${{ matrix.abi }}.json
+          if-no-files-found: warn
+          retention-days: 30
