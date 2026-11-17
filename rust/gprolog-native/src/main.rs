@@ -2,10 +2,7 @@
 use gprolog_native::{parse_program, parse_query, solve, Limits};
 use std::{env, fs, process};
 
-const USAGE: &str = "Usage: gprolog-rs <source.pl> '<query.>' [--max-steps N] [--max-solutions N]\n\
-Native Rust Horn-clause Prolog subset; no GNU Prolog C runtime dependency.\n\
-Supports: conjunction, disjunction (;), invocation-scoped cut (!), finite Horn rules.\n\\
-Unsupported: if-then (->), arithmetic, rational trees, dynamic code, FD constraints.";
+const USAGE: &str = "Usage: gprolog-rs <source.pl> '<query.>' [--max-steps N] [--max-solutions N]\nRust-native finite Horn subset: conjunction (,), disjunction (;), and invocation-scoped cut (!).\nUnsupported: if-then (->), arithmetic, rational trees, dynamic code, finite-domain constraints.";
 
 fn execute() -> Result<(), String> {
     let args: Vec<String> = env::args().skip(1).collect();
