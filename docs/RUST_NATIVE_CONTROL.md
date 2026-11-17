@@ -59,3 +59,32 @@ claiming full quoted-atom semantic coverage.
 Promotion rule: H to bounded M only for implemented scope/precedence
 semantics on these cases on ELF64 and i686. Not complete GNU Prolog.
 Project-authored tests are correlated evidence, not an external witness.
+
+
+## Measured first execution — 17 November 2026
+
+The implementation's first complete, instrument-free Rust test run
+on [Actions #44073608503](https://github.com/jesusvilela/gprolog/actions/runs/44073608503)
+passed on Linux ELF64 and genuine i686 ELF32. Per ABI the Rust-only
+engine completed 11 existing parser/engine tests, 7 actual CLI tests,
+10 invocation-scoped control tests and 4 metamorphic tests
+(**32/32 passed**, zero failures). The historical GNU Prolog
+[compiler run #44073608537](https://github.com/jesusvilela/gprolog/actions/runs/44073608537)
+also passed, although it does not constitute independent cut
+verification of the Rust implementation.
+
+The test-only 512-seed malformed-input parser check remains within
+the metamorphic family; do not count those cases as independent ISO
+reference witnesses.
+
+**Bounded M result:** cut scope, disjunction precedence, nested
+caller alternatives and source-order answers matched the predeclared
+small corpus on both ABIs. This is project-authored testing. The
+algorithm retains copied substitution snapshots, so neither mutable
+heap/trail correctness nor performance superiority is established.
+
+**Remaining obstruction:** real Prolog's extensive control and
+lifetime semantics (if-then, meta-call, module scope, rational trees)
+are not yet represented. The next work should compare snapshots with
+an explicit Rust trail/choicepoint prototype under the SAME tests,
+not add a C/Rust adapter or claim full compatibility.
