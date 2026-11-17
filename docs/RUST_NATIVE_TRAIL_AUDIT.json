@@ -1,0 +1,210 @@
+{
+  "task_id": "gprolog-rust-native-trail-choicepoints-2026-11-17",
+  "claim": {
+    "text": "The Rust-only Prolog interpreter can replace per-choice substitution HashMap clones with a single mutable binding store, reversible trail and lazy choicepoint continuation while preserving bounded observable query behavior",
+    "scope": "45 native Rust tests on ELF64/i686; 149 paired Rust snapshot/trail CLI programs on one Linux ELF64 runner; five paired synthetic observations for 20k facts",
+    "status_before": "H",
+    "assumptions": [
+      "All alternatives undo to the checkpoint recorded before their branch was first entered",
+      "Monotonic freshening avoids variable-ID reuse on redo",
+      "Finite-term occurs-check continues to prohibit rational cycles",
+      "Pre-trail Rust commit is a behavioral regression oracle, not an independent Prolog semantics proof"
+    ],
+    "forbidden_promotions": [
+      "No full WAM term heap or garbage collector implemented",
+      "No complete ISO or GNU Prolog behavior claimed",
+      "No general performance superiority or speedup attributable solely to the trail",
+      "No independent external replication",
+      "Do not hide first failed compilation or sub-resolution benchmark"
+    ]
+  },
+  "specification": {
+    "intended_object": "Rust BindingStore with one HashMap+LIFO trail, deferred TryClause and Resume work frames and exact choicepoint trail marks",
+    "invariants": [
+      "Each active binding is installed once and untrailed at checkpoint on redo",
+      "Failed partial unification restores all writes",
+      "Not-unifiable speculative matching always undoes writes",
+      "Query values read from live store before redo",
+      "Cut truncates current-invocation alternatives but does not untrail live current branch",
+      "First and later clause candidates execute in source order with lazy unification",
+      "Answer and failure results preserve observed Rust baseline behavior"
+    ],
+    "known_answer_cases": [
+      "(X=a,X=b;X=c) returns c only",
+      "(X=a,X \\=a;X=b) returns b only",
+      "p(f(a,b)). p(f(a,a)). queried p(f(X,X)) returns a only",
+      "root and child cut boundaries from Generation 12 remain correct",
+      "ancestor returns noah,mei; append returns [a,b,c]; member returns a,b,c",
+      "long alias chains and explicit occurs-check reject cycles"
+    ]
+  },
+  "implementation": {
+    "artifact": "rust/gprolog-native/src/engine.rs; rust/gprolog-native/tests/trail.rs; tests/rust_trail/differential.py; .github/workflows/rust-trail-differential.yml",
+    "commit": "branch rust/native-trail-choicepoints, commit e2c0808360c476551e695842431f2287bae8f088 before audit ledger",
+    "environment": "Rust 1.85.1; Ubuntu 24.04, x86_64 ELF64, i686 ELF32 via multilib; Python 3.12 standard library, GNU /usr/bin/time",
+    "live_entrypoint": "root Cargo workspace gprolog-rs CLI / parse_program + parse_query + engine::solve; snapshot baseline 2f4c7b9346c7bcdfcd177907049f67cfe957f4d4",
+    "representation": "Rust HashMap mutable binding values and Vec trail IDs, ChoicePoint {trail_mark, Work}, no AST term arena and no per-choice substitution copy"
+  },
+  "metric": {
+    "name": "Full ordered CLI output parity and bounded resource comparison",
+    "type": "typed_tuple",
+    "units": "pass/fail cases per ABI; nanoseconds per subprocess including wrapper; peak resident memory KiB; ratios on synthetic workload only",
+    "direction": "two_sided",
+    "raw_before_clipping": true,
+    "semantic_invariance_claimed": true,
+    "equivalence_attacks": [
+      "Seeded 128 fully-ground fact/rule permutations",
+      "Clause reorder and variable alpha-renaming",
+      "Partial-unifier prefix failure with sibling recovery",
+      "Root and nested cut before/after disjunction",
+      "Aliases and speculative disequality probes",
+      "Alternative-count scaling on fixed 20k facts"
+    ]
+  },
+  "tests": {
+    "black_box": [
+      "45 Rust tests on both ELF64 and genuine i686 ELF32, including ten new trail integration tests and three direct untrail unit tests",
+      "21 fixed and 128 deterministic generated programs compared full CLI stdout/stderr/exit with exact Rust snapshot"
+    ],
+    "structural": [
+      "Inspect engine.rs: no per-choice substitution clone; one BindingStore with reversible trail",
+      "Rust-only ELF tests verify no linked libgprolog",
+      "Full GNU Prolog C compiler/bootstrap regressions on PR head as noninterference control"
+    ],
+    "property_based": [
+      "128 seeded fully-ground semicolon, cut, rules, facts with fixed PRNG seed 17262026",
+      "Existing 512 malformed-source parser cases remain in Rust metamorphic suite"
+    ],
+    "metamorphic": [
+      "Alpha renaming and fact order inversion preserve expected relation to output order",
+      "Rollback after failing compound unification returns correct next branch",
+      "Cut prunes earlier but not later alternatives"
+    ],
+    "fuzzing": [
+      "No coverage-guided fuzz, shrinking or arbitrary untrusted foreign memory tested"
+    ],
+    "historical": [
+      "Original 32-test Rust suite and C compiler/bootstrap regression history preserved",
+      "Snapshot Rust baseline built from immutable 2f4c7b9346c7bcdfcd177907049f67cfe957f4d4"
+    ]
+  },
+  "controls": {
+    "matched_baselines": [
+      "Same Rust compiler version builds immutable pre-trail Rust binary and candidate Rust binary",
+      "Identical Prolog input bytes, query, limits and runner for both binaries"
+    ],
+    "negative_controls": [
+      "Wrong binding must fail and untrail, not succeed",
+      "Failed speculative disequality must not poison next branch",
+      "A cut followed by failure still removes earlier alternatives",
+      "Memory/timing tiny 250-fact initial round explicitly classified inconclusive"
+    ],
+    "compute_parity": "Rust 1.85.1, same runner/process type, five paired alternating AB/BA orders with two warmups each and resource observations per process",
+    "parameter_parity": "Max steps/max solutions and compiler release profile matched; output SHA compared",
+    "sampling_parity": "21 fixed tests and seeded 128 generated cases; synthetic 20k fact workload same source for both",
+    "data_access_parity": "Exactly identical input file and query strings per matched pair"
+  },
+  "preregistration": {
+    "prediction": "Zero wrong ordered answers, no stale binding and both ABI test gates pass; benchmark effect must be measured separately",
+    "primary_metric": "Any Rust baseline/candidate stdout/stderr/exit mismatch or failed trail invariant blocks candidate",
+    "uncertainty_method": "Deterministic corpus for correctness; five paired synthetic runs descriptive without inferential CI; no external production workload sampling",
+    "kill_condition": "Any incorrect answer, stale rollback state, cut leak, ABI-specific failure, missing control or C execution dependency",
+    "stop_condition": "Do not build WAM heap/GC/foreign bridge to conceal a trail defect; no broad speed claim from one synthetic trial",
+    "promotion_rule": "H -> M only for bounded native trail behavior with exact matching and ABI pass; synthetic performance recorded as descriptive not generalized"
+  },
+  "evidence": {
+    "primary_sources": [
+      "https://github.com/jesusvilela/gprolog/actions/runs/44119226614",
+      "https://github.com/jesusvilela/gprolog/actions/runs/44120205901",
+      "https://github.com/jesusvilela/gprolog/actions/runs/44119804055",
+      "https://github.com/jesusvilela/gprolog/blob/master/docs/RUST_NATIVE_CONTROL_AUDIT.json"
+    ],
+    "execution_records": [
+      "First trail commit a37b22d84 CI 44118682272 failed compilation: missing public Limits/Solution/SolveError inadvertently removed; restored in aa7533602",
+      "After restoration, Rust ELF64/i686 CI 44119226614 passed 14 library + 7 CLI + 10 control + 4 metamorphic + 10 trail integration = 45 tests per ABI",
+      "First differential #44119675175: 21/21 full stdout/stderr/exit parity; 250-fact GNU time wall numbers rounded to 0.00 s and were deliberately retired as inconclusive",
+      "Revised differential #44120205901: 21 fixed + 128 seeded full stdout/stderr/exit cases, 149/149 equal, zero errors on matched ELF64 runner",
+      "Synthetic 20,000-fact, first 256 answers, 5 alternating pairs: baseline median 0.020987063 s, candidate 0.015026416 s; median max RSS 16428 KiB vs 14136 KiB",
+      "Raw artifact rust-trail-differential ID 14343264933, inspected ZIP JSON for samples and hashes; output hash identical for all samples",
+      "No independent third-party reviewer; no full ISO or WAM/FD implementation"
+    ],
+    "independent_witnesses": [],
+    "claim_to_artifact_map": [
+      "Trail exact checkpoint and undo -> BindingStore::mark/undo_to and internal unit tests",
+      "Control flow preserved -> PendingGoal::cut_barrier + ChoicePoint and control.rs existing tests",
+      "Full CLI behavior -> tests/rust_trail/differential.py and raw 149-pair JSON",
+      "Resource differences -> raw /usr/bin/time RSS and Python monotonic subprocess wall measurements",
+      "WAM term heap, GC and ISO semantics -> no artifact; status H"
+    ]
+  },
+  "round_trip": {
+    "edges": [
+      {
+        "from": "avoid per-choice substitution map copies",
+        "to": "one Rust mutable binding store with undo trail",
+        "preserved": [
+          "bindings and rollback semantics for finite tested subset"
+        ],
+        "transformed": [
+          "eager branch pre-unification becomes lazy candidate evaluation"
+        ],
+        "lost": [
+          "causal isolation of trail's independent speed contribution"
+        ],
+        "remainder": [
+          "no full term cell arena"
+        ]
+      },
+      {
+        "from": "per-call cut scope",
+        "to": "choice frames with exact trail checkpoints",
+        "preserved": [
+          "pending goal ownership barrier, caller alternatives"
+        ],
+        "transformed": [
+          "snapshot state becomes redo Work task"
+        ],
+        "lost": [
+          "no dynamic meta-call scope coverage"
+        ],
+        "remainder": [
+          "full ISO cut/meta-call semantics"
+        ]
+      },
+      {
+        "from": "bounded native semantics",
+        "to": "same-Rust binary differential and benchmark",
+        "preserved": [
+          "149 observable output pairs and paired sample logs"
+        ],
+        "transformed": [
+          "per-process RSS and high-resolution parent wall times"
+        ],
+        "lost": [
+          "representativeness and independent reference"
+        ],
+        "remainder": [
+          "large real-world workloads and separate trail-vs-lazy ablation"
+        ]
+      }
+    ]
+  },
+  "result": {
+    "observed": "M: 45/45 Rust tests per ABI; 149/149 matched complete ELF64 CLI observables; same-output synthetic 20k facts and 5 paired runs with baseline median 20.987 ms vs candidate 15.026 ms, max RSS 16428 vs 14136 KiB. Neither causally isolates the trail nor validates full Prolog.",
+    "effect_size": "Median synthetic wall-speed ratio 1.3967x and peak-RSS reduction 13.95% on one runner; five paired raw observations, no population uncertainty claimed",
+    "uncertainty": "Same-author code/tests and snapshot baseline, single Linux CI runner family; 128 generated cases use limited grammar; speed conflates trail storage with deferred clause evaluation; other Prolog workloads/OS unknown",
+    "status_after": "M",
+    "retired_claims": [
+      "250-fact initial 0.00-second timings establish useful speed",
+      "Rust-only snapshot benchmark can isolate causal benefit of trailing without an eager-vs-lazy ablation",
+      "First trail rewrite compiled without changes: public types were dropped in initial patch"
+    ],
+    "active_remainder": [
+      "Replace recursive AST Terms with a Rust-owned shared term arena before claiming full WAM heap",
+      "Isolate substitution representation vs lazy clause evaluation through a matched ablation or structural null",
+      "Challenge 100k+ choicepoints, memory limits, pathological alias-chain depth and trail lifecycle",
+      "Broader ISO Prolog differential witness and independent external review",
+      "Resource and GC model for long-running compiled Prolog workloads"
+    ]
+  }
+}
