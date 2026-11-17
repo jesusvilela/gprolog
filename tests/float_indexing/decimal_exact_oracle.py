@@ -131,7 +131,7 @@ def replace_once(src,old,new,expected=1):
     assert src.count(old)==expected,("source anchor drift",src.count(old),old[:95])
     return src.replace(old,new)
 
-def instrument(lexer,parser):
+def instrument(lexer,parser,engine):
     lex=lexer.read_text()
     old='  if (sscanf(pl_token.name, "%lf", &pl_token.float_num) != 1 ||\n      !(pl_token.float_num <= DBL_MAX && pl_token.float_num >= -DBL_MAX))'
     # Always trace actual C conversion, including a guard rejection.
@@ -185,7 +185,26 @@ Audit_Float_Term(double x)
     p=replace_once(p,'      term = Pl_Put_Float(-pl_token.float_num);',
                      '      Audit_Float_Term(-pl_token.float_num);\n      term = Pl_Put_Float(-pl_token.float_num);')
     parser.write_text(p)
-    print("Instrumented throwaway lexer+parser C files; Git sources unchanged")
+    # Observe the final compiled constant at native WAM runtime, not
+    # merely the lexer/parser input to native code generation.
+    native_c=engine.read_text()
+    target='Pl_Get_Float(double n, WamWord start_word)\n{\n  WamWord word, tag_mask;\n\n  DEREF(start_word, word, tag_mask);'
+    hook='''Pl_Get_Float(double n, WamWord start_word)
+{
+  WamWord word, tag_mask;
+  const char *audit_path = getenv("GPROLOG_DECIMAL_FIDELITY_TRACE");
+  if (audit_path && audit_path[0])
+    {
+      FILE *audit_log = fopen(audit_path, "a");
+      if (!audit_log) abort();
+      fprintf(audit_log, "NATIVE|%a\\n", n);
+      fclose(audit_log);
+    }
+
+  DEREF(start_word, word, tag_mask);'''
+    native_c=replace_once(native_c,target,hook)
+    engine.write_text(native_c)
+    print("Instrumented throwaway C lexer, parser and compiled get_float; Git sources unchanged")
 
 def execute(cmd,cwd,env,seconds=120):
     try:
@@ -206,6 +225,9 @@ def parse_trace(path):
         elif len(parts)==2 and parts[0]=="TERM":
             val=int.from_bytes(struct.pack(">d",float.fromhex(parts[1])),"big")
             result.append({"stage":"TERM","bits":f"{val:016x}"})
+        elif len(parts)==2 and parts[0]=="NATIVE":
+            val=int.from_bytes(struct.pack(">d",float.fromhex(parts[1])),"big")
+            result.append({"stage":"NATIVE","bits":f"{val:016x}"})
         else: raise RuntimeError("Unexpected C trace: "+raw[:160])
     return result
 
@@ -259,8 +281,17 @@ def run_case(name,token,expected,version,bindir,root,errors):
         check_one(stage,record["modes"][stage],token,expected,reject,
                   name+"/"+version+"/"+stage,errors)
         if stage=="compile" and not reject and run["code"]==0:
-            native=execute([w/"probe_native"],w,env)
-            record["modes"]["native"]=native
+            native_log=w/"native.trace"
+            native_env=dict(env,**{TRACE:str(native_log)})
+            native=execute([w/"probe_native"],w,native_env)
+            c_records=parse_trace(native_log)
+            observed=[x for x in c_records if x["stage"]=="NATIVE"]
+            record["modes"]["native"]={"command":native,"traces":c_records}
+            if not observed:
+                errors.append(name+"/"+version+": no executed native get_float C witness")
+            for witness in observed:
+                if int(witness["bits"],16)!=expected:
+                    errors.append(name+"/"+version+": native machine constant differs from exact oracle bits "+witness["bits"])
             if native["code"]!=0 or native["output"].strip()!="OK":
                 errors.append(name+"/"+version+": native known-answer output wrong")
     return record
@@ -311,13 +342,14 @@ def main():
     a=sub.add_parser("instrument")
     a.add_argument("--lexer",type=Path,required=True)
     a.add_argument("--parser",type=Path,required=True)
+    a.add_argument("--engine",type=Path,required=True)
     sub.add_parser("selftest")
     b=sub.add_parser("verify")
     b.add_argument("--baseline-bin",type=Path,required=True)
     b.add_argument("--candidate-bin",type=Path,required=True)
     b.add_argument("--output",type=Path,required=True)
     arg=parser.parse_args()
-    if arg.task=="instrument":instrument(arg.lexer,arg.parser)
+    if arg.task=="instrument":instrument(arg.lexer,arg.parser,arg.engine)
     elif arg.task=="selftest":selftest()
     else:verify(arg.baseline_bin.resolve(),arg.candidate_bin.resolve(),arg.output.resolve())
 

@@ -46,10 +46,12 @@ jobs:
         run: |
           python3 candidate/tests/float_indexing/decimal_exact_oracle.py instrument \
             --lexer "$PWD/baseline/src/BipsPl/lexer_supp.c" \
-            --parser "$PWD/baseline/src/BipsPl/parser_supp.c"
+            --parser "$PWD/baseline/src/BipsPl/parser_supp.c" \
+            --engine "$PWD/baseline/src/EnginePl/wam_inst.c"
           python3 candidate/tests/float_indexing/decimal_exact_oracle.py instrument \
             --lexer "$PWD/candidate/src/BipsPl/lexer_supp.c" \
-            --parser "$PWD/candidate/src/BipsPl/parser_supp.c"
+            --parser "$PWD/candidate/src/BipsPl/parser_supp.c" \
+            --engine "$PWD/candidate/src/EnginePl/wam_inst.c"
           git -C baseline status --short
           git -C candidate status --short
       - name: Build historical and candidate ELF64
