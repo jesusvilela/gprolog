@@ -1,0 +1,61 @@
+name: Finite decimal lexer safety regression
+
+on:
+  push:
+    branches: ['fix/finite-float-literal-guard']
+    paths:
+      - 'src/BipsPl/lexer_supp.c'
+      - 'tests/float_indexing/lexer_overflow_guard.py'
+      - '.github/workflows/lexer-overflow-guard.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lexer-safety:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        abi: [elf64, elf32]
+    steps:
+      - name: Checkout guard branch
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Install multilib for 32-bit build
+        if: matrix.abi == 'elf32'
+        run: |
+          sudo apt-get update -qq
+          sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y gcc-multilib libc6-dev-i386
+          printf 'int main(void){return 0;}\n' | gcc -m32 -x c - -o /tmp/guard-i686
+          readelf -h /tmp/guard-i686 | grep -E 'Class:.*ELF32'
+      - name: Build native ELF64 compiler
+        if: matrix.abi == 'elf64'
+        working-directory: src
+        run: |
+          ./configure --with-install-dir=in-place
+          make
+          make install
+      - name: Build native ELF32 compiler
+        if: matrix.abi == 'elf32'
+        working-directory: src
+        run: |
+          CC='gcc -m32' CFLAGS='-O3 -fomit-frame-pointer -m32' LDFLAGS='-m32' \
+            ./configure --host=i686-pc-linux-gnu --with-install-dir=in-place
+          make
+          make install
+      - name: Run overflow lexer oracle and finite regressions
+        run: |
+          python3 tests/float_indexing/lexer_overflow_guard.py \
+            --bin-dir "$PWD/bin" --output "$PWD/lexer-guard-${{ matrix.abi }}.json"
+      - name: Upload raw lexical evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: lexer-guard-${{ matrix.abi }}
+          path: lexer-guard-${{ matrix.abi }}.json
+          if-no-files-found: warn
+          retention-days: 30
