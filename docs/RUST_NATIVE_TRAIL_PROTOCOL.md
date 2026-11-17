@@ -122,3 +122,33 @@ ISO equivalence and WAM term heap/GC/performance portability.
 The snapshot reference and tests are project-authored and correlated;
 there is no external independent replication. Full ledger:
 RUST_NATIVE_TRAIL_AUDIT.json.
+
+
+## Cross-ABI strengthening — final observed matrix
+
+[CI 44122164750](https://github.com/jesusvilela/gprolog/actions/runs/44122164750)
+compiled the pinned pre-trail snapshot and candidate native Rust
+binaries for **both** ELF64 and i686 ELF32. For each ABI, the same
+21 fixed plus 128 seeded source/query cases matched complete stdout,
+stderr and exit code: **149/149 per ABI, 298 pairs total**. The
+source-level no-snapshot structural check passed in both jobs.
+
+The synthetic 20,000-fact workload, first 256 answers, with five
+paired alternate-order samples and two warmups per binary gave:
+
+| ABI | Snapshot median wall | Trail+lazy median wall | Snapshot / candidate peak RSS |
+|---|---:|---:|---:|
+| ELF64 | 22.617368 ms | 16.513267 ms | 16,492 / 14,200 KiB |
+| i686 ELF32 | 14.372621 ms | 8.621647 ms | 9,980 / 8,480 KiB |
+
+The observable wall ratios were approximately 1.370x (ELF64) and
+1.667x (i686), in separate job environments. **Do not compare their
+absolute time scales across machine configurations.** Causal
+attribution of speed to trailing alone remains invalid because the
+candidate also defers clause unification.
+
+Raw artifacts under run 44122164750: ELF64 **14344499735** and
+ELF32 **14346516154**. Each archive includes the typed claim ledger
+and the complete generated test/benchmark JSON. Missing independent
+external witnesses are explicit validator warnings, not silently
+replaced with self-review.

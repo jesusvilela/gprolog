@@ -54,11 +54,20 @@ including 128 seeded representation attacks. The
 [typed trail evidence ledger](docs/RUST_NATIVE_TRAIL_AUDIT.json)
 preserves the failures, controls and raw observations.
 
-For one synthetic 20,000-fact source retrieving the first 256 answers,
-five matched runs had median wall times 20.99 ms (old) versus 15.03 ms
-(candidate), and peak RSS medians 16,428 KiB versus 14,136 KiB.
-This is a descriptive combined trail/lazy-choice result, NOT a measured
-causal advantage of trailing alone or of broad Prolog performance.
+On a synthetic 20,000-fact source retrieving 256 answers, five paired
+runs **within each native ABI** produced the following descriptive
+medians (prior Rust snapshot / new trail+lazy engine):
+
+| ABI | Wall time | Peak resident memory |
+|---|---|---|
+| ELF64 | 22.62 / 16.51 ms | 16,492 / 14,200 KiB |
+| i686 ELF32 | 14.37 / 8.62 ms | 9,980 / 8,480 KiB |
+
+Both ABIs also matched **149/149 exact ordered CLI outputs** against
+the pinned snapshot reference. These numbers do not isolate trailing
+from lazy clause evaluation, nor establish broad Prolog performance.
+The earlier ELF64 result (20.99 / 15.03 ms) is retained in the
+audit's raw historical record rather than averaged across runners.
 
 This **does not** mean GNU Prolog has been fully rewritten.
 Full ISO operators, if-then, arithmetic, the WAM compiler/runtime,

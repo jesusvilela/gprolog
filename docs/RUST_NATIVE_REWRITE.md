@@ -159,3 +159,15 @@ evaluation: **do not attribute this effect to trailing alone**.
 Original AST terms are not yet in a shared cell arena, and WAM,
 finite-domain constraints, GC and ISO completion remain absent.
 See RUST_NATIVE_TRAIL_PROTOCOL.md and RUST_NATIVE_TRAIL_AUDIT.json.
+
+
+## Cross-word-size differential audit
+
+The additional Rust-only baseline-versus-trail comparison in Actions
+44122164750 checked 149/149 ordered CLI cases on EACH ELF64 and i686
+ELF32, with original GNU Prolog C code unused. Per-ABI 5-pair
+20,000-fact medians were 22.62/16.51 ms and 16,492/14,200 KiB
+(ELF64 snapshot/candidate), and 14.37/8.62 ms and 9,980/8,480 KiB
+(i686). These are two *separate* synthetic measurement contexts.
+Do not infer general throughput or an isolated causal effect of
+the binding trail from them.

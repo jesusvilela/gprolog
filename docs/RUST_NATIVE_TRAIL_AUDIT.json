@@ -2,7 +2,7 @@
   "task_id": "gprolog-rust-native-trail-choicepoints-2026-11-17",
   "claim": {
     "text": "The Rust-only Prolog interpreter can replace per-choice substitution HashMap clones with a single mutable binding store, reversible trail and lazy choicepoint continuation while preserving bounded observable query behavior",
-    "scope": "45 native Rust tests on ELF64/i686; 149 paired Rust snapshot/trail CLI programs on one Linux ELF64 runner; five paired synthetic observations for 20k facts",
+    "scope": "45 native Rust tests on ELF64/i686; 149 full CLI parity cases per ABI (298 total) against immutable Rust snapshot; two-ABI 5-pair synthetic 20k-fact measurements",
     "status_before": "H",
     "assumptions": [
       "All alternatives undo to the checkpoint recorded before their branch was first entered",
@@ -40,8 +40,8 @@
   },
   "implementation": {
     "artifact": "rust/gprolog-native/src/engine.rs; rust/gprolog-native/tests/trail.rs; tests/rust_trail/differential.py; .github/workflows/rust-trail-differential.yml",
-    "commit": "branch rust/native-trail-choicepoints, commit e2c0808360c476551e695842431f2287bae8f088 before audit ledger",
-    "environment": "Rust 1.85.1; Ubuntu 24.04, x86_64 ELF64, i686 ELF32 via multilib; Python 3.12 standard library, GNU /usr/bin/time",
+    "commit": "Rust trail implementation a37b22d8, API correction aa753360, tests d0d54b2f, cross-ABI differential d9094bc0; exact current PR head verified by CI",
+    "environment": "Rust 1.85.1, Ubuntu 24.04 ELF64 and genuine i686 ELF32 with multilib, Python 3.12 and GNU /usr/bin/time; two pinned native Rust binaries per ABI",
     "live_entrypoint": "root Cargo workspace gprolog-rs CLI / parse_program + parse_query + engine::solve; snapshot baseline 2f4c7b9346c7bcdfcd177907049f67cfe957f4d4",
     "representation": "Rust HashMap mutable binding values and Vec trail IDs, ChoicePoint {trail_mark, Work}, no AST term arena and no per-choice substitution copy"
   },
@@ -64,12 +64,14 @@
   "tests": {
     "black_box": [
       "45 Rust tests on both ELF64 and genuine i686 ELF32, including ten new trail integration tests and three direct untrail unit tests",
-      "21 fixed and 128 deterministic generated programs compared full CLI stdout/stderr/exit with exact Rust snapshot"
+      "21 fixed and 128 deterministic generated programs compared full CLI stdout/stderr/exit with exact Rust snapshot",
+      "Final cross-ABI run 44122164750: 149 full CLI cases match baseline on EACH of ELF64 and i686 ELF32; 298 paired behavioral comparisons total"
     ],
     "structural": [
       "Inspect engine.rs: no per-choice substitution clone; one BindingStore with reversible trail",
       "Rust-only ELF tests verify no linked libgprolog",
-      "Full GNU Prolog C compiler/bootstrap regressions on PR head as noninterference control"
+      "Full GNU Prolog C compiler/bootstrap regressions on PR head as noninterference control",
+      "CI structural marker gate explicitly rejects per-choice subst.clone()/Substitution fields and expects BindingStore/ChoicePoint/undo_to"
     ],
     "property_based": [
       "128 seeded fully-ground semicolon, cut, rules, facts with fixed PRNG seed 17262026",
@@ -99,7 +101,7 @@
       "A cut followed by failure still removes earlier alternatives",
       "Memory/timing tiny 250-fact initial round explicitly classified inconclusive"
     ],
-    "compute_parity": "Rust 1.85.1, same runner/process type, five paired alternating AB/BA orders with two warmups each and resource observations per process",
+    "compute_parity": "Same frozen pre-trail Rust commit and new candidate built for matching ABI within each CI job; five matched alternating-order pairs per ABI, two warmups per binary; absolute cross-ABI timings not compared",
     "parameter_parity": "Max steps/max solutions and compiler release profile matched; output SHA compared",
     "sampling_parity": "21 fixed tests and seeded 128 generated cases; synthetic 20k fact workload same source for both",
     "data_access_parity": "Exactly identical input file and query strings per matched pair"
@@ -117,7 +119,8 @@
       "https://github.com/jesusvilela/gprolog/actions/runs/44119226614",
       "https://github.com/jesusvilela/gprolog/actions/runs/44120205901",
       "https://github.com/jesusvilela/gprolog/actions/runs/44119804055",
-      "https://github.com/jesusvilela/gprolog/blob/master/docs/RUST_NATIVE_CONTROL_AUDIT.json"
+      "https://github.com/jesusvilela/gprolog/blob/master/docs/RUST_NATIVE_CONTROL_AUDIT.json",
+      "https://github.com/jesusvilela/gprolog/actions/runs/44122164750"
     ],
     "execution_records": [
       "First trail commit a37b22d84 CI 44118682272 failed compilation: missing public Limits/Solution/SolveError inadvertently removed; restored in aa7533602",
@@ -126,7 +129,11 @@
       "Revised differential #44120205901: 21 fixed + 128 seeded full stdout/stderr/exit cases, 149/149 equal, zero errors on matched ELF64 runner",
       "Synthetic 20,000-fact, first 256 answers, 5 alternating pairs: baseline median 0.020987063 s, candidate 0.015026416 s; median max RSS 16428 KiB vs 14136 KiB",
       "Raw artifact rust-trail-differential ID 14343264933, inspected ZIP JSON for samples and hashes; output hash identical for all samples",
-      "No independent third-party reviewer; no full ISO or WAM/FD implementation"
+      "No independent third-party reviewer; no full ISO or WAM/FD implementation",
+      "Final ABI matrix #44122164750: ELF64 and real i686 ELF32 jobs successful; each 149/149 full stdout/stderr/exit parity, no C runtime dependencies, structural no-snapshot source test passed",
+      "Final ELF64 5-pair synthetic medians: baseline 0.022617368 s and 16492 KiB peak RSS; candidate 0.016513267 s and 14200 KiB; output checksums identical",
+      "Final ELF32 5-pair synthetic medians: baseline 0.014372621 s and 9980 KiB peak RSS; candidate 0.008621647 s and 8480 KiB; output checksums identical",
+      "Raw final action artifacts: ELF32 14346516154, ELF64 14344499735. Independently downloaded and inspected raw JSON; audit manifest validator 0 errors, witness warnings intentionally disclosed"
     ],
     "independent_witnesses": [],
     "claim_to_artifact_map": [
@@ -134,8 +141,10 @@
       "Control flow preserved -> PendingGoal::cut_barrier + ChoicePoint and control.rs existing tests",
       "Full CLI behavior -> tests/rust_trail/differential.py and raw 149-pair JSON",
       "Resource differences -> raw /usr/bin/time RSS and Python monotonic subprocess wall measurements",
-      "WAM term heap, GC and ISO semantics -> no artifact; status H"
-    ]
+      "WAM term heap, GC and ISO semantics -> no artifact; status H",
+      "Cross-ABI parity and resource samples -> #44122164750 raw ELF32 and ELF64 JSON artifacts"
+    ],
+    "no_independent_witness_reason": "Both source generation and earlier Rust snapshot reference are project-controlled; no independently authored ISO Prolog witness exists. Preserve warnings rather than treating self-validation as external replication."
   },
   "round_trip": {
     "edges": [
@@ -186,13 +195,77 @@
         "remainder": [
           "large real-world workloads and separate trail-vs-lazy ablation"
         ]
+      },
+      {
+        "from": "requirement to remove cloned per-choice substitutions",
+        "to": "frozen trail protocol",
+        "preserved": [
+          "single live binding store and exact undo checkpoint"
+        ],
+        "transformed": [
+          "reversible bindings specified as an operational invariant"
+        ],
+        "lost": [
+          "C GNU Prolog full rational tree semantics not targeted"
+        ],
+        "remainder": [
+          "full Rust term arena remains open"
+        ]
+      },
+      {
+        "from": "trail protocol",
+        "to": "live Rust implementation",
+        "preserved": [
+          "binding rollback, lazy candidate frames, scoped cut"
+        ],
+        "transformed": [
+          "HashMap values and Vec trail with Work::TryClause"
+        ],
+        "lost": [
+          "eager first-argument candidate evaluation algorithm"
+        ],
+        "remainder": [
+          "need ablation to isolate trail performance"
+        ]
+      },
+      {
+        "from": "implementation",
+        "to": "matched per-ABI tests",
+        "preserved": [
+          "exact source bytes, candidate/baseline output, error and status"
+        ],
+        "transformed": [
+          "deterministic 21+128 corpus across two binary architectures"
+        ],
+        "lost": [
+          "unrepresented ISO and real workloads"
+        ],
+        "remainder": [
+          "independent behavior reference not present"
+        ]
+      },
+      {
+        "from": "runtime observations",
+        "to": "interpretation and next requirement",
+        "preserved": [
+          "298 exact pairs plus raw time and RSS per ABI"
+        ],
+        "transformed": [
+          "narrow M semantic promotion and descriptive synthetic performance"
+        ],
+        "lost": [
+          "causal or population performance inference"
+        ],
+        "remainder": [
+          "next: term heap/GC and controlled eager/lazy ablation"
+        ]
       }
     ]
   },
   "result": {
-    "observed": "M: 45/45 Rust tests per ABI; 149/149 matched complete ELF64 CLI observables; same-output synthetic 20k facts and 5 paired runs with baseline median 20.987 ms vs candidate 15.026 ms, max RSS 16428 vs 14136 KiB. Neither causally isolates the trail nor validates full Prolog.",
-    "effect_size": "Median synthetic wall-speed ratio 1.3967x and peak-RSS reduction 13.95% on one runner; five paired raw observations, no population uncertainty claimed",
-    "uncertainty": "Same-author code/tests and snapshot baseline, single Linux CI runner family; 128 generated cases use limited grammar; speed conflates trail storage with deferred clause evaluation; other Prolog workloads/OS unknown",
+    "observed": "M: Rust ELF64 and i686 each pass 45 native tests and 149 full immutable snapshot-vs-trail CLI pairs (298 exact matches). Final synthetic 20k-fact medians ELF64 22.617/16.513 ms and 16492/14200 KiB; i686 14.373/8.622 ms and 9980/8480 KiB, snapshot/trail. Both causal isolation and full GNU Prolog conformance remain H.",
+    "effect_size": "ELF64 descriptive synthetic wall ratio 1.370x and peak RSS reduction 13.90%; i686 wall ratio 1.667x and peak RSS reduction 15.03%; five alternating paired observations per ABI, not an inferential benchmark",
+    "uncertainty": "Five paired short-running process observations per ABI, substantial launch overhead, distinct CI runners and no statistical confidence interval. Baseline-vs-candidate changes BOTH lazy clause evaluation and bindings; not isolating trail. Independent ISO oracle absent.",
     "status_after": "M",
     "retired_claims": [
       "250-fact initial 0.00-second timings establish useful speed",
@@ -204,7 +277,8 @@
       "Isolate substitution representation vs lazy clause evaluation through a matched ablation or structural null",
       "Challenge 100k+ choicepoints, memory limits, pathological alias-chain depth and trail lifecycle",
       "Broader ISO Prolog differential witness and independent external review",
-      "Resource and GC model for long-running compiled Prolog workloads"
+      "Resource and GC model for long-running compiled Prolog workloads",
+      "Independent ISO-compatible behavior witness, broader language feature and security fuzz tests still absent"
     ]
   }
 }
