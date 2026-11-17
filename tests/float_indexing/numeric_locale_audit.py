@@ -254,6 +254,29 @@ def verify(bindir, output):
         print("COUNTEREXAMPLE POSTINIT:", message)
     for message in report["postinit_runtime_failures"][:18]:
         print("POSTINIT RUNTIME FAILURE:", message)
+    summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
+    if summary_path:
+        affected = [x for x in report["cases"]
+                    if x["regime"] == "de_forced_at_source_token"]
+        compiled_nonzero = sum(x["modes"]["compiled"]["process"]["exit"] != 0
+                               for x in affected)
+        consulted_fatal = sum(
+            any(marker in x["modes"]["consulted"]["process"]["output"].lower()
+                for marker in ("segmentation", "bad address:", "sigsegv"))
+            for x in affected)
+        with open(summary_path, "a", encoding="utf-8") as summary:
+            summary.write("## Numeric locale audit: two separate conclusions\n\n")
+            summary.write(f"- **Normal startup under C and German environments:** "
+                          f"{'PASS' if report['passed_normal_startup'] else 'FAIL'} "
+                          f"(16 source/mode checks, {report['abi']}).\n")
+            summary.write(f"- **Forced comma-decimal locale at user token:** "
+                          f"{'invariant' if report['postinit_invariance'] else 'FALSIFIED'}; "
+                          f"{len(report['postinit_invariance_failures'])}/16 bit mismatches, "
+                          f"{compiled_nonzero}/8 failed compilations, "
+                          f"{consulted_fatal}/8 consulted fatal diagnostics.\n\n")
+            summary.write("The forced mutation is a controlled adversarial test, "
+                          "**not normal GNU Prolog startup**. A green workflow "
+                          "represents only the startup claim.\n")
     if not report["passed_normal_startup"]:
         raise SystemExit(1)
     if report["postinit_invariance"]:
