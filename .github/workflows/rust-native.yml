@@ -2,7 +2,7 @@ name: Rust native direct rewrite - executable and semantic gates
 
 on:
   push:
-    branches: [rust/native-rewrite]
+    branches: [master, rust/native-rewrite]
     paths:
       - 'rust/gprolog-native/**'
       - 'Cargo.toml'
