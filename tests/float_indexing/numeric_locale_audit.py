@@ -10,7 +10,6 @@ import hashlib
 import json
 import os
 from pathlib import Path
-import struct
 import subprocess
 import tempfile
 
@@ -58,7 +57,7 @@ def instrument(engine_path, lexer_path):
 
     s = lexer_path.read_text(encoding="utf-8")
     s = substitute_once(s, "#include <float.h>",
-                           "#include <float.h>\n#include <locale.h>",
+                           "#include <float.h>\n#include <locale.h>\n#include <stdint.h>",
                            "lexer locale header")
     original = (
         '  if (sscanf(pl_token.name, "%lf", &pl_token.float_num) != 1 ||\n'
@@ -69,17 +68,19 @@ def instrument(engine_path, lexer_path):
     const char *trace_name = getenv("GPROLOG_AUDIT_LOCALE_TRACE");
     if (trace_name && trace_name[0])
       {
-        FILE *trace = fopen(trace_name, "a");
+        uint64_t raw_bits = 0;
+        FILE *trace;
+        memcpy(&raw_bits, &pl_token.float_num, sizeof(raw_bits));
+        trace = fopen(trace_name, "a");
         if (!trace) abort();
-        fprintf(trace, "NUM|%s|%s|%s|%a|%d\\\\n",
+        /* Hex INTEGER bits, not locale-sensitive C %a decimal notation. */
+        fprintf(trace, "NUM|%s|%s|%s|%016llx|%d\\n",
                 setlocale(LC_NUMERIC, NULL), localeconv()->decimal_point,
-                pl_token.name, pl_token.float_num, converted);
+                pl_token.name, (unsigned long long) raw_bits, converted);
         fclose(trace);
       }
     if (converted != 1 ||
         !(pl_token.float_num <= DBL_MAX && pl_token.float_num >= -DBL_MAX))'''
-    # Python literal has escaped backslash; normalize to a C newline escape.
-    changed = changed.replace('\\\\n"', '\\n"')
     s = substitute_once(s, original, changed, "lexer sscanf")
     s = substitute_once(
         s,
@@ -119,7 +120,7 @@ def trace_records(path):
         if len(cells) != 6 or cells[0] != "NUM":
             raise RuntimeError("Malformed direct C trace: " + line[:130])
         _, locale, separator, lexeme, encoded, converted = cells
-        observed = int.from_bytes(struct.pack(">d", float.fromhex(encoded)), "big")
+        observed = int(encoded, 16)
         out.append({"locale": locale, "decimal_point": separator,
                     "lexeme": lexeme, "bits": f"{observed:016x}",
                     "converted": int(converted)})

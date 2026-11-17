@@ -101,3 +101,26 @@ remediation before touching the production lexer.
 
 Pending CI. Preserve raw stdout, actual locale strings, separators,
 C binary64 values, source hashes, and the typed two-claim verdict.
+
+
+## Measurement-correction record — first attempt (17 November 2026)
+
+[CI #44041966803](https://github.com/jesusvilela/gprolog/actions/runs/44041966803)
+executed the C and German-environment controls with 0 ordinary-startup
+mismatches on ELF64 (16/16 source/mode combinations). The deliberate
+post-start German mutation then produced six early fractional
+bit mismatches before the trace decoder raised a Python ValueError on
+a later case.
+
+**The incomplete first run is a harness failure, not a completed ABI
+result.** C's \`%a\` hexadecimal-float presentation itself follows
+the active numeric locale, emitting a comma-decimal form that
+Python \`float.fromhex\` does not accept. Retain the partial negative
+evidence but do not treat that run as a full passed audit.
+
+V2 fixes only the instrument's transport representation: copy the
+actual \`double\` bytes into a 64-bit unsigned integer and emit
+\`%016llx\` integer hex. This is locale-insensitive on the tested
+little-endian ELF64/i686 ABIs. The eight decimal lexemes, three
+regimes, exact rational oracle and both claim-level decision
+criteria stay unchanged. No production C source is altered.
