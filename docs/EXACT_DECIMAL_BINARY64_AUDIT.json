@@ -1,0 +1,180 @@
+{
+  "task_id": "gprolog-exact-decimal-binary64-2026-11-17",
+  "claim": {
+    "text": "Finite decimal token values in GNU Prolog exactly equal IEEE754 binary64 round-to-nearest-even reference",
+    "scope": "44 fixed decimal cases (39 finite, 5 overflows), Linux ELF64/i686; historical comparison finite only",
+    "status_before": "H",
+    "assumptions": [
+      "GNU Prolog C double is binary64",
+      "C locale decimal conversion",
+      "project-authored oracle is separately implemented from parser"
+    ],
+    "forbidden_promotions": [
+      "No universal IEEE754/ISO correctness proof",
+      "No independent third-party validation",
+      "No historical overflow safety claim"
+    ]
+  },
+  "specification": {
+    "intended_object": "Exact integer-rational oracle vs actual C lexer/parser bit patterns",
+    "invariants": [
+      "Finite lexer and term bit patterns equal oracle (including negative zero)",
+      "Finite fixtures compile, execute and consult",
+      "Overflow in guarded fork rejects before term construction",
+      "Finite behavior agrees with pinned historical compiler"
+    ],
+    "known_answer_cases": [
+      "0.1 -> 0x3fb999999999999a",
+      "5e-324 -> 0x0000000000000001",
+      "half-min-subnormal -> 0x0",
+      "max-finite -> 0x7fefffffffffffff",
+      "overflow midpoint -> infinity reference, guarded rejection"
+    ]
+  },
+  "implementation": {
+    "artifact": "tests/float_indexing/decimal_exact_oracle.py and .github/workflows/decimal-exact-audit.yml",
+    "commit": "8ee84cd1a1e8afd8a996b6a8617ab65666730fc7",
+    "environment": "Ubuntu 24.04 ELF64 and i686 ELF32, two separately built GNU Prolog versions",
+    "live_entrypoint": "Python selftest / instrument / verify",
+    "representation": "Python Fraction exact-rational rounding; C hexadecimal-float lexer and parser trace reconstructed as 64-bit integers"
+  },
+  "metric": {
+    "name": "Bitwise mismatches and incorrect finite acceptance/overflow rejection",
+    "type": "typed_tuple",
+    "units": "cases x compiler x ABI x execution mode",
+    "direction": "two_sided",
+    "raw_before_clipping": true,
+    "semantic_invariance_claimed": true,
+    "equivalence_attacks": [
+      "0.1 versus 0.100000000",
+      "0.5 versus 5.000000E-1",
+      "exact underflow tie ±10^-800",
+      "normal-subnormal tie",
+      "exact overflow midpoint ±1",
+      "signed zero and negative subnormal"
+    ]
+  },
+  "tests": {
+    "black_box": [
+      "Known-answer Prolog native and consulted execution"
+    ],
+    "structural": [
+      "C lexer %a and Pl_Put_Float %a traced in test-only C builds",
+      "ELF32 / ELF64 headers checked"
+    ],
+    "property_based": [
+      "12 deterministic seeded dyadic cases"
+    ],
+    "metamorphic": [
+      "Equivalent spelling yields bitwise identical values",
+      "Negative zero retains sign bit"
+    ],
+    "fuzzing": [
+      "Not performed; bounded deterministic corpus, no coverage-guided fuzzer"
+    ],
+    "historical": [
+      "Pre-guard historical baseline 46a32b7c on finite cases; earlier crash audit 44031708229 on overflow"
+    ]
+  },
+  "controls": {
+    "matched_baselines": [
+      "46a32b7c2f0d2bbf904152543445315331498a8a historical pre-guard compiler"
+    ],
+    "negative_controls": [
+      "Known finite and overflow cases; signed zero"
+    ],
+    "compute_parity": "Same runner and matching build flags within each ABI",
+    "parameter_parity": "Not applicable, deterministic compilation",
+    "sampling_parity": "44 frozen cases with seed 20261117",
+    "data_access_parity": "Identical generated source text in finite historical and candidate tests"
+  },
+  "preregistration": {
+    "prediction": "Zero bitwise or semantic mismatches on 39 finite cases in both toolchains, all five infinite rounded values rejected by current guard",
+    "primary_metric": "Any unexpected IEEE754 binary64 bit, especially at rounding ties, or incorrect acceptance/rejection",
+    "uncertainty_method": "Deterministic exact finite corpus; no population CI or probabilistic effect",
+    "kill_condition": "One-bit mismatch, loss of sign, wrong rejection, unexpected crash, timeout, bad instrumentation or ABI",
+    "stop_condition": "No production compiler/parser change until independently interpreted reproducer",
+    "promotion_rule": "Only bounded M once actual ELF64 and i686 CI traces pass; no universal correctness claim"
+  },
+  "evidence": {
+    "primary_sources": [
+      "https://github.com/jesusvilela/gprolog/pull/5",
+      "https://github.com/jesusvilela/gprolog/actions/runs/44031708229"
+    ],
+    "execution_records": [
+      "Local oracle selftest checked known IEEE754 encodings; CI execution initially unverified"
+    ],
+    "independent_witnesses": [],
+    "claim_to_artifact_map": [
+      "Oracle bits -> integer-rational Fraction arithmetic",
+      "Runtime observed bits -> throwaway C lexer/parser %a traces",
+      "Finite compiled/consulted correctness -> fixture answer output",
+      "Historical unsafe overflow -> archived corrected crash audit"
+    ]
+  },
+  "round_trip": {
+    "edges": [
+      {
+        "from": "decimal source",
+        "to": "exact rational",
+        "preserved": [
+          "mathematical value and sign"
+        ],
+        "transformed": [
+          "decimal powers to integer numerator/denominator"
+        ],
+        "lost": [
+          "formatting except saved source"
+        ],
+        "remainder": [
+          "C locale"
+        ]
+      },
+      {
+        "from": "lexer scan",
+        "to": "Prolog term",
+        "preserved": [
+          "binary64 expected bits"
+        ],
+        "transformed": [
+          "unary minus applied in term construction"
+        ],
+        "lost": [
+          "other parser entrypoints unmeasured"
+        ],
+        "remainder": [
+          "other OS/compilers"
+        ]
+      },
+      {
+        "from": "compiled/consulted runtime",
+        "to": "evidence",
+        "preserved": [
+          "known-answer and C %a trace"
+        ],
+        "transformed": [
+          "hex floats to 64-bit integer equality"
+        ],
+        "lost": [
+          "unselected real application workloads"
+        ],
+        "remainder": [
+          "external reproduction"
+        ]
+      }
+    ]
+  },
+  "result": {
+    "observed": "No CI result as of preregistration; local exact oracle self-tests passed",
+    "effect_size": "not applicable before execution",
+    "uncertainty": "Correlated project-authored witness; finite sample",
+    "status_after": "H",
+    "retired_claims": [],
+    "active_remainder": [
+      "Actual ELF64/i686 execution",
+      "Locale sensitivity",
+      "Other compiler/CPU/OS combinations",
+      "Independent review"
+    ]
+  }
+}
