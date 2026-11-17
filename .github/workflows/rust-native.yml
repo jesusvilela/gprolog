@@ -5,11 +5,15 @@ on:
     branches: [rust/native-rewrite]
     paths:
       - 'rust/gprolog-native/**'
+      - 'Cargo.toml'
+      - 'rust-toolchain.toml'
       - '.github/workflows/rust-native.yml'
       - 'docs/RUST_NATIVE_REWRITE.md'
   pull_request:
     paths:
       - 'rust/gprolog-native/**'
+      - 'Cargo.toml'
+      - 'rust-toolchain.toml'
       - '.github/workflows/rust-native.yml'
       - 'docs/RUST_NATIVE_REWRITE.md'
   workflow_dispatch:
@@ -61,7 +65,7 @@ jobs:
             --target ${{ matrix.target }} --all-targets
           cargo +1.85.1 build --release --manifest-path rust/gprolog-native/Cargo.toml \
             --target ${{ matrix.target }}
-          EXE=rust/gprolog-native/target/${{ matrix.target }}/release/gprolog-rs
+          EXE=target/${{ matrix.target }}/release/gprolog-rs
           readelf -h "$EXE" | grep -E 'Class:.*${{ matrix.abi }}'
           if ldd "$EXE" | grep -Ei 'libgprolog|libgprolog_float_decimal'; then
             echo 'Unexpected GNU Prolog C bridge detected' >&2

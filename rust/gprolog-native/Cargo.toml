@@ -17,5 +17,3 @@ path = "src/main.rs"
 
 [dependencies]
 
-[profile.release]
-panic = "abort"

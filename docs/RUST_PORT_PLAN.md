@@ -1,3 +1,13 @@
+> **SUPERSEDED by the direct Rust-native rewrite decision (17 November 2026).**
+>
+> This R0/R1 compatibility plan remains a historical record, not the
+> active architecture or an instruction to build a production
+> feature-flagged C/Rust bridge. The current direction is
+> [RUST_NATIVE_REWRITE.md](RUST_NATIVE_REWRITE.md), with a standalone
+> executable at [rust/gprolog-native](../rust/gprolog-native/README.md).
+
+---
+
 # Rust-first GNU Prolog — R0 migration contract
 
 > 侘未来 · preserve the semantics, change the substrate only when evidence permits.
