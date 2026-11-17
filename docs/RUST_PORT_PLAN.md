@@ -126,3 +126,7 @@ The 59 tokens combine the previous 44-case exact rational corpus with 15 adversa
 Raw evidence (30-day retention): `rust-r0-elf64` artifact **14311367159**, `rust-r0-elf32` artifact **14311053092**. The separately authored Rust code, C host and Python oracle all belong to this project; no independent external replication is claimed. No speedup has been measured. No production compiler, lexer, engine or native backend is replaced.
 
 **Promotion:** R0 candidate H -> M for these tokens, ABIs and locale regimes. Full GNU Prolog Rust portability remains H. Next authorized gate is a **shadow** call at the actual GNU Prolog lexer boundary, preserving the original C path and comparing both on the same user input before optional feature enablement.
+
+## R1 shadow interface measured
+
+The [R1 audit protocol](RUST_R1_SHADOW_PROTOCOL.md) now reports successful live lexer shadow calls in temporary GNU Prolog builds on both Linux ABIs: 44 exact-value cases across two startup environments and compiled/consulted paths, 188 actual Rust C ABI shadow events per ABI and zero mismatches. This is a migration *compatibility bridge*, not an enabled production path. The next step remains an opt-in feature-gated Rust parser with C fallback, and only after explicit lifecycle/performance/compatibility validation.

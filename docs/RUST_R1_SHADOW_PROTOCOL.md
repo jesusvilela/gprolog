@@ -77,3 +77,15 @@ Independent external review is outstanding.
 
 Post-CI results: not yet measured. Preserve failures and correction
 history if the instrumented program exercises a different path.
+
+## R1 execution result — 17 November 2026
+
+[Actual R1 CI #44047896700](https://github.com/jesusvilela/gprolog/actions/runs/44047896700) passed on Linux ELF64 and genuine i686 ELF32. Each ABI exercised 44 frozen source values in both C and German startup environments, for 88 source/environment cases. Each case was evaluated through the compiled and consulted GNU Prolog paths. Raw JSON inspection found 188 actual lexer-to-Rust C ABI shadow events per ABI, zero wrong C/Rust classification or bit results, and zero Prolog known-answer/overflow failures. The number of events exceeds the nominal 176 source/mode pairs because the compiler/consultation paths can lex the same literal more than once; count events, not independent source fixtures.
+
+The signed-negative-zero case is correctly compared only at the positive lexical magnitude; the earlier Generation 8 end-to-end term/native constant test supplies separate sign-bit evidence. Five overflow cases per locale were rejected by both implementations without a crash. Under German *startup environment*, GNU Prolog still normalized the numeric locale to C, as independently observed in Generation 9.
+
+Both instrumented builds passed the original goal-expansion and float-indexing semantic regressions with the shadow inactive. The native GNU Prolog production source files are untouched by this PR; the C observer is injected in the temporary Actions checkout only.
+
+Raw evidence with 30-day artifact retention: rust-r1-elf64 ID **14312606438** and rust-r1-elf32 ID **14313020084**. The independently authored Rust crate, C loader, test oracle, fixture generator, and audit protocol are still controlled within the same research project; no external third-party replication is implied.
+
+**Evidence status:** R1 H -> M for this 44-case, two-locale, two-ABI, two-path corpus. It is not a production replacement, nor a measured performance/safety improvement. The next gate is an optional, reversible production feature flag with live C fallback, plus FFI lifetime tests, all standard bootstrap suites and workload performance comparisons. No feature flag is implemented by this PR.

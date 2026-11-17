@@ -5,6 +5,9 @@ on:
     branches: ['rust/r1-shadow-lexer']
     paths:
       - 'tests/float_indexing/rust_lexer_shadow.py'
+      - 'docs/RUST_R1_SHADOW_PROTOCOL.md'
+      - 'docs/RUST_R1_SHADOW_AUDIT.json'
+      - 'docs/RUST_PORT_PLAN.md'
       - '.github/workflows/rust-r1-lexer-shadow.yml'
   workflow_dispatch:
 

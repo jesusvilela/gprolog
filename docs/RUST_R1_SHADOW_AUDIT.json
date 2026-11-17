@@ -1,0 +1,191 @@
+{
+  "task_id": "gprolog-rust-port-r1-shadow-2026-11-17",
+  "claim": {
+    "text": "On the tested Prolog source inputs, the real GNU Prolog lexical numeric path can invoke the Rust C ABI as a pure observer and preserve the original C status, bits and execution answers",
+    "scope": "44 frozen exact-rational source cases x C/German environment x compiled/consulted GNU Prolog, Linux ELF64/i686",
+    "status_before": "H",
+    "assumptions": [
+      "Original C sscanf/finite guard remains in control",
+      "Rust C ABI called with actual Lexer_Number pl_token.name bytes",
+      "German startup environment is normalized to C by GNU Prolog engine",
+      "C dynamic loader and ABI used only in CI test checkout"
+    ],
+    "forbidden_promotions": [
+      "No claim Rust replaces production GNU Prolog lexer",
+      "No full Rust Prolog/WAM engine port",
+      "No performance improvement or memory-safety proof",
+      "No external independent reproduction",
+      "Do not infer signed term semantics solely from unsigned lexical magnitude"
+    ]
+  },
+  "specification": {
+    "intended_object": "Test-only Rust parser shadow on actual C lexer token with live C kept authoritative",
+    "invariants": [
+      "Rust status equals original C accept/reject for target lexeme",
+      "Each finite C and Rust binary64 magnitude matches exact rational oracle",
+      "Overflow rejected by both and original Prolog parser without crash",
+      "Compiled and consulted answer oracle preserved",
+      "No repository production source modified"
+    ],
+    "known_answer_cases": [
+      "max finite long decimal -> 0x7fefffffffffffff at lex magnitude",
+      "half subnormal exact -> zero bit magnitude",
+      "negative zero lexical magnitude zero; separate prior native signbit witness",
+      "1.0e309 -> both reject, controlled source syntax diagnostic"
+    ]
+  },
+  "implementation": {
+    "artifact": "tests/float_indexing/rust_lexer_shadow.py, rust/float-decimal cdylib, rust-r1-lexer-shadow.yml",
+    "commit": "5d76e80ef8d7a0a8f3ea788c9021cd3e55aa6824",
+    "environment": "Ubuntu 24.04 GNU Prolog 1.6.0-derived fork; Rust 1.85.1 ELF64 and actual i686 ELF32; C and German locales",
+    "live_entrypoint": "Test-only src/BipsPl/lexer_supp.c observer after original sscanf/guard, GNU Prolog gplc and gprolog consulted",
+    "representation": "C ABI status int, u64 IEEE bits, raw C shadow event, preserved original Prolog source"
+  },
+  "metric": {
+    "name": "C/Rust runtime lexical status and exact-bit mismatch count with unchanged program outcomes",
+    "type": "typed_tuple",
+    "units": "source x environment x ABI x execution mode, plus observed C shadow events",
+    "direction": "two_sided",
+    "raw_before_clipping": true,
+    "semantic_invariance_claimed": true,
+    "equivalence_attacks": [
+      "C versus German startup environment",
+      "Compiled and consulted GNU Prolog execution",
+      "Finite, signed, subnormal, max-finite and overflow literals",
+      "Long exact decimal spellings from previous corpus"
+    ]
+  },
+  "tests": {
+    "black_box": [
+      "88 source/environment cases per ABI through actual compiled and consulted GNU Prolog paths",
+      "Native produced executables return expected answers for all finite cases"
+    ],
+    "structural": [
+      "Test-only injected C helper calls Rust cdylib via actual dlopen/dlsym",
+      "C original lexer guard and error handling unchanged in checkout",
+      "Verified ELF64/i686 binary classes"
+    ],
+    "property_based": [
+      "12 seeded dyadic exact decimals retained from prior oracle"
+    ],
+    "metamorphic": [
+      "Same source hash and expected lexical bits under both C/German environment startup"
+    ],
+    "fuzzing": [
+      "not performed: fixed deterministic sample only"
+    ],
+    "historical": [
+      "Prior exact decimal native bits Generation 8, locale normalization Generation 9",
+      "Original goal expansion and float indexing semantic regressions passed in instrumented build"
+    ]
+  },
+  "controls": {
+    "matched_baselines": [
+      "Actual unchanged C lexer remains authority and internal control",
+      "Exact integer-rational oracle from earlier generation"
+    ],
+    "negative_controls": [
+      "Five overflowing source literals rejected by both C and Rust",
+      "GNU Prolog tests run without shadow env var in same instrumented checkout"
+    ],
+    "compute_parity": "Same GNU Prolog executable per ABI under both locale environments",
+    "parameter_parity": "No model hyperparameters, same Rust parser build",
+    "sampling_parity": "44 fixed corpus before observing R1 outcome",
+    "data_access_parity": "Same user source bytes delivered to C original and Rust FFI in a single lexical call"
+  },
+  "preregistration": {
+    "prediction": "No Rust/C mismatch or changed semantics for 44 source cases across both modes, locales and ABIs",
+    "primary_metric": "Any status disagreement, wrong binary64 magnitude or different compiled/consulted answer",
+    "uncertainty_method": "Deterministic fixed corpus and instrumented actual runtime; no confidence interval",
+    "kill_condition": "Any C/Rust bit mismatch, incorrect classification, missing C ABI call, false overflow accept, Prolog wrong answer or crash",
+    "stop_condition": "No production integration before R1 pass and separate feature flag + lifecycle/performance controls",
+    "promotion_rule": "H -> bounded M for R1 test-only shadow parity only; broader Rust port remains H"
+  },
+  "evidence": {
+    "primary_sources": [
+      "https://github.com/jesusvilela/gprolog/actions/runs/44047896700",
+      "https://github.com/jesusvilela/gprolog/blob/master/docs/RUST_PORT_PLAN.md"
+    ],
+    "execution_records": [
+      "R1 run 44047896700 both ELF64 and i686 jobs success",
+      "88 actual source/environment cases per ABI (39 finite + 5 overflow in C and German), compiled and consulted, zero parity errors",
+      "188 actual Rust C ABI shadow events logged per ABI; some lexemes visited more than once, not independent fixtures",
+      "Instrumented GNU Prolog goal-expansion and float-indexing regression suites passed without the shadow enabled",
+      "Raw 30-day artifacts 14312606438 ELF64 and 14313020084 i686 ELF32 inspected"
+    ],
+    "independent_witnesses": [],
+    "claim_to_artifact_map": [
+      "Actual lexer Rust invocation -> tests/float_indexing/rust_lexer_shadow.py trace records in CI artifacts",
+      "Original C status and exact bits -> same logged C/Rust event and independent Fraction oracle",
+      "Unchanged Prolog answers -> native and consulted fixture execution and inherited compiler checks"
+    ]
+  },
+  "round_trip": {
+    "edges": [
+      {
+        "from": "existing C source lexer",
+        "to": "test-only Rust shadow callback",
+        "preserved": [
+          "literal bytes and C value/status authority"
+        ],
+        "transformed": [
+          "Rust C ABI returns a candidate status and bit value"
+        ],
+        "lost": [
+          "post-lex unary sign not part of token-level comparison"
+        ],
+        "remainder": [
+          "signed term proof borrowed from prior end-to-end test"
+        ]
+      },
+      {
+        "from": "real compiler/consulted program",
+        "to": "raw event trace",
+        "preserved": [
+          "88 source/environment cases per ABI and C/Rust bit equality"
+        ],
+        "transformed": [
+          "C double bits serialized as unsigned hex"
+        ],
+        "lost": [
+          "exact number of independent parsing invocations is not case count"
+        ],
+        "remainder": [
+          "performance overhead of dynamic loader not studied"
+        ]
+      },
+      {
+        "from": "shadow parity",
+        "to": "future Rust integration",
+        "preserved": [
+          "bounded exact lexical compatibility"
+        ],
+        "transformed": [
+          "R1 evidence permits considering opt-in feature flag"
+        ],
+        "lost": [
+          "not production integrated"
+        ],
+        "remainder": [
+          "unsafe FFI review and full Prolog semantic equivalence"
+        ]
+      }
+    ]
+  },
+  "result": {
+    "observed": "M: two Linux ABIs, 88 fixed source/environment cases each, compiled and consulted, 188 live shadow C ABI events each and zero mismatches; original semantic checks passed; production GNU Prolog C remained authoritative",
+    "effect_size": "0/88 source/environment case failures per ABI and 0/188 logged C shadow event mismatches per ABI; not an error rate estimate",
+    "uncertainty": "Project-authored oracle and tests, not independent external replication; 44 fixed source values and two Linux ABIs only",
+    "status_after": "M",
+    "retired_claims": [
+      "R0 standalone C host alone demonstrates Rust parser integration with GNU Prolog's real lexical path"
+    ],
+    "active_remainder": [
+      "Production opt-in Rust feature flag with safe C fallback not yet implemented",
+      "Lifecycle/FFI and process-global locale interaction under real foreign predicates",
+      "Native/consulted workload performance with actual Rust path vs existing C",
+      "Other compilers/CPUs and broader parser grammar/property fuzzing",
+      "No work yet on Rust WAM engine, compiler IR, backtracking, FD solver"
+    ]
+  }
+}
