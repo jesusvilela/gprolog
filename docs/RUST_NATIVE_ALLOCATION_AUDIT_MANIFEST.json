@@ -1,0 +1,245 @@
+{
+  "task_id": "gprolog-gen20-alloc-audit-2026-11-18",
+  "claim": {
+    "text": "Gen18's deferred Arc continuation ownership avoids 8128 PendingGoal element clones and greatly lowers Rust heap allocation requests relative to retired Gen19 when the first of two same-signature heads fails in 128 sequential calls.",
+    "scope": "Pinned Rust-only Gen18/Gen19 native ELF64 and i686, 13 fixtures, 20 samples per version/case/ABI.",
+    "status_before": "H",
+    "assumptions": [
+      "Same exact source/query bytes and toolchain",
+      "External allocator probe samples only during solve",
+      "Live choicepoint-profile source instrumentation"
+    ],
+    "forbidden_promotions": [
+      "No independent ISO Prolog correctness claim",
+      "No causal CPU-time attribution",
+      "Requested Layout bytes are not physical copied bytes or RSS"
+    ]
+  },
+  "specification": {
+    "intended_object": "Nonmutating allocation-level comparison of immutable released and retired execution representations.",
+    "invariants": [
+      "Exact ordered answers and CLI parity",
+      "No engine edits",
+      "T2 first-fail R128 128 choices and 128 redos on both versions",
+      "0 cloned PendingGoal elements on Gen18 versus 8128 on Gen19"
+    ],
+    "known_answer_cases": [
+      "T2 first-failure R128",
+      "T2 first-success R128",
+      "T1/T3/T16 and builtin controls"
+    ]
+  },
+  "implementation": {
+    "artifact": "tests/rust_allocation/alloc_probe.rs; tests/rust_allocation/compare_allocations.py",
+    "commit": "Gen18 901c8b58c12fbe8b79f70b0118f951f3ed2fcf21 vs Gen19 c09fff05d9b3dd43fb90014278e3a98d701d3640",
+    "environment": "Rust 1.85.1 release on Ubuntu 24.04 true native ELF64 and i686 ELF32",
+    "live_entrypoint": "gprolog_native::solve() in a matching external System GlobalAlloc binary; opt-in choicepoint-profile source counts",
+    "representation": "Typed tuple of allocation calls, requested layout bytes, realloc requests and source counters"
+  },
+  "metric": {
+    "name": "Allocator requests, requested Layout bytes, copied-goal elements and exact answer parity",
+    "type": "typed_tuple",
+    "units": "calls; requested bytes; PendingGoal elements; exact ordered answers",
+    "direction": "partial_order",
+    "raw_before_clipping": true,
+    "semantic_invariance_claimed": false,
+    "equivalence_attacks": [
+      "Swap order of two same-signature heads",
+      "Deep-term versus ground-term failures",
+      "T1/T3/T16 and builtin ownership controls"
+    ]
+  },
+  "tests": {
+    "black_box": [
+      "264 full stdout/stderr/exit CLI cases per ABI",
+      "13 complete allocator fixture answer traces per ABI"
+    ],
+    "structural": [
+      "Live 18-field feature-only ChoicepointProfile in both pinned libraries",
+      "Analytic T2 first-fail 0 versus 8128 copied-goal predictions"
+    ],
+    "property_based": [
+      "Fixed seeded generated historical Rust differential corpus"
+    ],
+    "metamorphic": [
+      "First head succeeds versus first fails",
+      "Deep term nesting",
+      "Three-head and builtin no-change controls"
+    ],
+    "fuzzing": [
+      "Fixed seeded generator in 264-case corpus, not unrestricted fuzzer"
+    ],
+    "historical": [
+      "Gen19 retirement PR #18, failed performance workflow 44290905287",
+      "Gen18 merged PR #17 and validation history"
+    ]
+  },
+  "controls": {
+    "matched_baselines": [
+      "Immutable released Gen18 and rejected Gen19 linked to the same external allocator diagnostic on the same ABI"
+    ],
+    "negative_controls": [
+      "T1, T3, T16, builtin-only (same ownership branch)",
+      "Both-head-fail and full enumeration",
+      "Successful first head"
+    ],
+    "compute_parity": "Pinned Rust compiler, release profile, same ABI and external diagnostic; 5 AB/BA paired blocks.",
+    "parameter_parity": "Same limits, source program bytes and repeated query goal count per cell.",
+    "sampling_parity": "3 untallied warmups and 20 tracked solves per variant/case/ABI.",
+    "data_access_parity": "Same source/query bytes and SHA256 within each matched case."
+  },
+  "preregistration": {
+    "prediction": "T2 first-fail R128 Gen18 has zero cloned goal-elements, Gen19 has 8128, with more allocator calls and requested bytes for Gen19 in >=4/5 paired blocks on both ABIs.",
+    "primary_metric": "Typed pair of Rust allocation-request median and requested-layout bytes median, separately per ABI and first-fail R128 cell.",
+    "uncertainty_method": "20 raw observations per version/case/ABI, 5 AB/BA blocks; no independent external replication or causal time interval.",
+    "kill_condition": "Wrong 0-versus-8128 count, changed outputs, failure of requested-allocation contrast or native ABI build failure.",
+    "stop_condition": "Do not modify solver or invent a new optimization to rescue failed results.",
+    "promotion_rule": "M only for bounded source and allocator requests if full raw evidence and both ABI gates pass; CPU-time causality remains H."
+  },
+  "evidence": {
+    "primary_sources": [
+      "Pinned GitHub released Gen18 and rejected Gen19 commits",
+      "Frozen Gen20 protocol and corrections"
+    ],
+    "execution_records": [
+      "https://github.com/jesusvilela/gprolog/actions/runs/44295028644",
+      "ELF64 raw artifact 14423123088",
+      "i686 raw artifact 14423825186",
+      "Original failed build run 44294857980"
+    ],
+    "independent_witnesses": [],
+    "claim_to_artifact_map": [
+      "Copied elements and Arc events => live profile values in alloc-contrast JSON",
+      "Allocation requests and requested bytes => GlobalAlloc samples in alloc-contrast JSON",
+      "Strict output equality => alloc-semantic JSON per ABI",
+      "Source identity => frozen Git SHAs and per-cell SHA256"
+    ]
+  },
+  "round_trip": {
+    "edges": [
+      {
+        "from": "requirement",
+        "to": "frozen scope",
+        "preserved": [
+          "pinned source SHAs",
+          "source/query parity",
+          "no engine code changes"
+        ],
+        "transformed": [
+          "typed measurements and audit interpretation"
+        ],
+        "lost": [
+          "causal clock-time attribution"
+        ],
+        "remainder": [
+          "no independent witness"
+        ]
+      },
+      {
+        "from": "frozen scope",
+        "to": "source representations",
+        "preserved": [
+          "pinned source SHAs",
+          "source/query parity",
+          "no engine code changes"
+        ],
+        "transformed": [
+          "typed measurements and audit interpretation"
+        ],
+        "lost": [
+          "causal clock-time attribution"
+        ],
+        "remainder": [
+          "no independent witness"
+        ]
+      },
+      {
+        "from": "source representations",
+        "to": "external allocator and live counters",
+        "preserved": [
+          "pinned source SHAs",
+          "source/query parity",
+          "no engine code changes"
+        ],
+        "transformed": [
+          "typed measurements and audit interpretation"
+        ],
+        "lost": [
+          "causal clock-time attribution"
+        ],
+        "remainder": [
+          "no independent witness"
+        ]
+      },
+      {
+        "from": "external allocator and live counters",
+        "to": "raw measurements",
+        "preserved": [
+          "pinned source SHAs",
+          "source/query parity",
+          "no engine code changes"
+        ],
+        "transformed": [
+          "typed measurements and audit interpretation"
+        ],
+        "lost": [
+          "causal clock-time attribution"
+        ],
+        "remainder": [
+          "no independent witness"
+        ]
+      },
+      {
+        "from": "raw measurements",
+        "to": "bounded interpretation",
+        "preserved": [
+          "pinned source SHAs",
+          "source/query parity",
+          "no engine code changes"
+        ],
+        "transformed": [
+          "typed measurements and audit interpretation"
+        ],
+        "lost": [
+          "causal clock-time attribution"
+        ],
+        "remainder": [
+          "no independent witness"
+        ]
+      },
+      {
+        "from": "bounded interpretation",
+        "to": "original requirement",
+        "preserved": [
+          "pinned source SHAs",
+          "source/query parity",
+          "no engine code changes"
+        ],
+        "transformed": [
+          "typed measurements and audit interpretation"
+        ],
+        "lost": [
+          "causal clock-time attribution"
+        ],
+        "remainder": [
+          "no independent witness"
+        ]
+      }
+    ]
+  },
+  "result": {
+    "observed": "Both ABIs passed 264/264 CLI cases and 13/13 allocation fixtures. On primary T2 first-fail R128, 4228 -> 28612 alloc calls; copied elements 0 -> 8128.",
+    "effect_size": "6.7673x allocation requests both ABIs; requested-layout bytes 12.5544x ELF64 and 11.9648x i686; 5/5 paired blocks for both metrics.",
+    "uncertainty": "Same project authored code, specification and test. Requested allocations deterministic for these fixed CI inputs, no external independent witness and no attribution of CPU time.",
+    "status_after": "M",
+    "retired_claims": [
+      "Fixed Gen19 T=2 owned policy as an optimization",
+      "Any claim that GlobalAlloc counts directly measure runtime cycles"
+    ],
+    "active_remainder": [
+      "Independent allocator profiler and semantic oracle",
+      "Different allocators, architectures or workloads",
+      "Causally isolated time contribution"
+    ]
+  }
+}
