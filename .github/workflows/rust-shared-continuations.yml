@@ -1,0 +1,164 @@
+name: Rust shared continuations - Gen16 semantic and A/B gates
+
+on:
+  push:
+    branches: ['rust/shared-continuations']
+    paths:
+      - 'rust/gprolog-native/**'
+      - 'tests/rust_choicepoint/**'
+      - '.github/workflows/rust-shared-continuations.yml'
+      - 'docs/RUST_NATIVE_SHARED_CONTINUATIONS_PROTOCOL.md'
+      - 'docs/RUST_NATIVE_SHARED_CONTINUATIONS_CORRECTION.md'
+  pull_request:
+    paths:
+      - 'rust/gprolog-native/**'
+      - 'tests/rust_choicepoint/**'
+      - '.github/workflows/rust-shared-continuations.yml'
+      - 'docs/RUST_NATIVE_SHARED_CONTINUATIONS_PROTOCOL.md'
+      - 'docs/RUST_NATIVE_SHARED_CONTINUATIONS_CORRECTION.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  shared-ab:
+    name: Gen16 frozen vs shared native (${{ matrix.abi }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - abi: elf64
+            target: x86_64-unknown-linux-gnu
+          - abi: elf32
+            target: i686-unknown-linux-gnu
+    steps:
+      - name: Checkout live candidate and frozen Gen16 baseline
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          fetch-depth: 60
+      - name: Pin exact Generation 16 source
+        run: |
+          set -euo pipefail
+          BASE=cd880bda3db495d329bdc3b6a0a0a4f654691579
+          git cat-file -e "${BASE}^{commit}"
+          git worktree add --detach /tmp/gen16-frozen "$BASE"
+          test "$(git -C /tmp/gen16-frozen rev-parse HEAD)" = "$BASE"
+          git rev-parse HEAD
+      - name: Install pinned Rust and native target
+        env:
+          ABI: ${{ matrix.abi }}
+          TARGET: ${{ matrix.target }}
+        run: |
+          set -euo pipefail
+          rustup toolchain install 1.85.1 --profile minimal
+          rustup target add "$TARGET" --toolchain 1.85.1
+          rustc +1.85.1 --version
+          if [ "$ABI" = elf32 ]; then
+            sudo apt-get update -qq
+            sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y gcc-multilib libc6-dev-i386
+            cat > /tmp/gcc-i686 <<'SH'
+          #!/bin/sh
+          exec gcc -m32 "$@"
+          SH
+            chmod +x /tmp/gcc-i686
+            echo "CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER=/tmp/gcc-i686" >> "$GITHUB_ENV"
+          fi
+      - name: Test feature-disabled default native solver
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          set -euo pipefail
+          CARGO_TARGET_DIR=/tmp/gen17-target cargo +1.85.1 test \
+            --manifest-path rust/gprolog-native/Cargo.toml \
+            --target "$TARGET" --all-targets
+      - name: Test instrumented solver and corrected structural predictions
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          set -euo pipefail
+          CARGO_TARGET_DIR=/tmp/gen17-profile-target cargo +1.85.1 test \
+            --manifest-path rust/gprolog-native/Cargo.toml \
+            --target "$TARGET" --features choicepoint-profile --all-targets
+      - name: Compile both uninstrumented release libraries and identical external bench harness
+        env:
+          ABI: ${{ matrix.abi }}
+          TARGET: ${{ matrix.target }}
+        run: |
+          set -euo pipefail
+          CARGO_TARGET_DIR=/tmp/gen16-target cargo +1.85.1 build \
+            --release --target "$TARGET" --manifest-path /tmp/gen16-frozen/Cargo.toml
+          CARGO_TARGET_DIR=/tmp/gen17-target cargo +1.85.1 build \
+            --release --target "$TARGET" --manifest-path Cargo.toml
+          for generation in 16 17; do
+            d="/tmp/gen${generation}-target/$TARGET/release/deps"
+            shopt -s nullglob
+            libs=("$d"/libgprolog_native-*.rlib)
+            if [ "${#libs[@]}" -ne 1 ]; then
+              echo "expected exactly one release rlib at $d" >&2
+              exit 1
+            fi
+            linker=()
+            if [ "$ABI" = elf32 ]; then linker=(-C linker=/tmp/gcc-i686); fi
+            rustc +1.85.1 --edition=2021 -C opt-level=3 -C panic=abort \
+              --target "$TARGET" "${linker[@]}" \
+              -L "dependency=$d" --extern "gprolog_native=${libs[0]}" \
+              tests/rust_choicepoint/bench_continuations.rs \
+              -o "/tmp/gen${generation}-bench"
+            cp "/tmp/gen${generation}-target/$TARGET/release/gprolog-rs" \
+               "/tmp/gen${generation}-cli"
+            if [ "$ABI" = elf32 ]; then
+              readelf -h "/tmp/gen${generation}-bench" | grep 'Class:.*ELF32'
+            else
+              readelf -h "/tmp/gen${generation}-bench" | grep 'Class:.*ELF64'
+            fi
+            if ldd "/tmp/gen${generation}-bench" | grep -Ei 'libgprolog|libgprolog_float_decimal'; then
+              echo "unexpected C GNU Prolog runtime dependency" >&2
+              exit 1
+            fi
+          done
+      - name: Frozen complete ordered CLI differential, including step limits
+        env:
+          ABI: ${{ matrix.abi }}
+        run: |
+          set -euo pipefail
+          python3 tests/rust_choicepoint/differential_shared.py \
+            --baseline /tmp/gen16-cli --candidate /tmp/gen17-cli \
+            --abi "$ABI" --output "$PWD/shared-differential-$ABI.json"
+      - name: Uninstrumented matched direct-solve A/B with negative controls
+        env:
+          ABI: ${{ matrix.abi }}
+        run: |
+          set -euo pipefail
+          python3 tests/rust_choicepoint/benchmark_shared.py \
+            --baseline /tmp/gen16-bench --candidate /tmp/gen17-bench \
+            --abi "$ABI" --candidate-commit "$(git rev-parse HEAD)" \
+            --output "$PWD/shared-ab-$ABI.json"
+      - name: Build and run feature-only live copy counters
+        env:
+          TARGET: ${{ matrix.target }}
+          ABI: ${{ matrix.abi }}
+        run: |
+          set -euo pipefail
+          CARGO_TARGET_DIR=/tmp/gen17-profile-target cargo +1.85.1 build \
+            --release --manifest-path rust/gprolog-native/Cargo.toml \
+            --target "$TARGET" --features choicepoint-profile --bin choicepoint-probe
+          python3 tests/rust_choicepoint/profile.py \
+            --probe /tmp/gen17-profile-target/"$TARGET"/release/choicepoint-probe \
+            --abi "$ABI" --output "$PWD/shared-profile-$ABI.json"
+      - name: Preserve every raw observation, also after a failed gate
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: rust-shared-continuations-${{ matrix.abi }}
+          path: |
+            shared-differential-${{ matrix.abi }}.json
+            shared-ab-${{ matrix.abi }}.json
+            shared-profile-${{ matrix.abi }}.json
+            docs/RUST_NATIVE_SHARED_CONTINUATIONS_PROTOCOL.md
+            docs/RUST_NATIVE_SHARED_CONTINUATIONS_CORRECTION.md
+          retention-days: 30
+          if-no-files-found: warn

@@ -28,7 +28,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     let answers = solve(&program, &query, limits)?;
     let p = read_choicepoint_profile();
     println!("ANSWERS\t{answers:?}");
-    let counters: [(&str, u64); 15] = [
+    let counters: [(&str, u64); 18] = [
         ("user_predicate_dispatches", p.user_predicate_dispatches),
         ("try_clause_tasks", p.try_clause_tasks),
         ("work_resume_tasks", p.work_resume_tasks),
@@ -36,6 +36,9 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         ("disjunction_choices_pushed", p.disjunction_choices_pushed),
         ("clause_continuation_vectors_cloned", p.clause_continuation_vectors_cloned),
         ("clause_continuation_goals_cloned", p.clause_continuation_goals_cloned),
+        ("shared_continuation_anchors", p.shared_continuation_anchors),
+        ("shared_continuation_handle_clones", p.shared_continuation_handle_clones),
+        ("shared_continuation_fallback_copies", p.shared_continuation_fallback_copies),
         ("resume_suffix_goals_materialized", p.resume_suffix_goals_materialized),
         ("disjunction_rest_goals_cloned", p.disjunction_rest_goals_cloned),
         ("choicepoints_redone", p.choicepoints_redone),

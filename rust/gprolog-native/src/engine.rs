@@ -3,6 +3,7 @@
 use crate::syntax::{Clause, Program, Query, Term};
 use std::collections::HashMap;
 use std::fmt;
+use std::sync::Arc;
 
 #[cfg(feature = "choicepoint-profile")]
 use std::cell::RefCell;
@@ -18,6 +19,9 @@ pub struct ChoicepointProfile {
     pub disjunction_choices_pushed: u64,
     pub clause_continuation_vectors_cloned: u64,
     pub clause_continuation_goals_cloned: u64,
+    pub shared_continuation_anchors: u64,
+    pub shared_continuation_handle_clones: u64,
+    pub shared_continuation_fallback_copies: u64,
     pub resume_suffix_goals_materialized: u64,
     pub disjunction_rest_goals_cloned: u64,
     pub choicepoints_redone: u64,
@@ -125,13 +129,56 @@ struct PendingGoal {
     term: Term,
     cut_barrier: usize,
 }
+/// A single-clause or empty suffix stays uniquely owned. Multi-clause
+/// alternatives share only immutable nonempty suffixes until execution.
+/// This never shares substitutions, modifies pending terms, or changes steps.
+enum ClauseContinuation {
+    Owned(Vec<PendingGoal>),
+    Shared(Arc<Vec<PendingGoal>>),
+}
+impl ClauseContinuation {
+    fn copy_for_choice(&self) -> Self {
+        match self {
+            Self::Owned(goals) => {
+                #[cfg(feature = "choicepoint-profile")]
+                profile_update(|p| {
+                    p.clause_continuation_vectors_cloned += 1;
+                    p.clause_continuation_goals_cloned += goals.len() as u64;
+                });
+                Self::Owned(goals.clone())
+            }
+            Self::Shared(goals) => {
+                #[cfg(feature = "choicepoint-profile")]
+                profile_update(|p| p.shared_continuation_handle_clones += 1);
+                Self::Shared(Arc::clone(goals))
+            }
+        }
+    }
+    fn into_owned(self) -> Vec<PendingGoal> {
+        match self {
+            Self::Owned(goals) => goals,
+            Self::Shared(goals) => match Arc::try_unwrap(goals) {
+                Ok(unique) => unique,
+                Err(shared) => {
+                    #[cfg(feature = "choicepoint-profile")]
+                    profile_update(|p| {
+                        p.shared_continuation_fallback_copies += 1;
+                        p.clause_continuation_vectors_cloned += 1;
+                        p.clause_continuation_goals_cloned += shared.len() as u64;
+                    });
+                    (*shared).clone()
+                }
+            },
+        }
+    }
+}
 /// Deferred branch; only the chosen clause is unified with live bindings.
 enum Work {
     Resume(Vec<PendingGoal>),
     TryClause {
         goal: Term,
         clause_index: usize,
-        continuation: Vec<PendingGoal>,
+        continuation: ClauseContinuation,
         invocation_barrier: usize,
     },
 }
@@ -320,7 +367,7 @@ pub fn solve(program: &Program, query: &Query, limits: Limits)
                     let mut goals: Vec<PendingGoal> = fresh.body.into_iter()
                         .map(|term| PendingGoal { term, cut_barrier: invocation_barrier })
                         .collect();
-                    goals.extend(continuation);
+                    goals.extend(continuation.into_owned());
                     active = Some(Work::Resume(goals));
                 } else {
                     // A mismatched compound head may have bound a prefix.
@@ -437,25 +484,30 @@ pub fn solve(program: &Program, query: &Query, limits: Limits)
                 // pushing this predicate's alternative clauses.
                 let invocation_barrier = alternatives.len();
                 let mark = bindings.mark();
+                let continuation = if clauses.len() > 1 && !rest.is_empty() {
+                    #[cfg(feature = "choicepoint-profile")]
+                    profile_update(|p| p.shared_continuation_anchors += 1);
+                    ClauseContinuation::Shared(Arc::new(rest))
+                } else {
+                    ClauseContinuation::Owned(rest)
+                };
                 for &index in clauses.iter().skip(1).rev() {
                     alternatives.push(ChoicePoint {
                         trail_mark: mark,
                         next: Work::TryClause {
                             goal: goal_value.clone(), clause_index: index,
-                            continuation: rest.clone(), invocation_barrier,
+                            continuation: continuation.copy_for_choice(), invocation_barrier,
                         },
                     });
                     #[cfg(feature = "choicepoint-profile")]
                     profile_update(|p| {
                         p.clause_choices_pushed += 1;
-                        p.clause_continuation_vectors_cloned += 1;
-                        p.clause_continuation_goals_cloned += rest.len() as u64;
                         p.maximum_pending_choices = p.maximum_pending_choices.max(alternatives.len());
                     });
                 }
                 active = Some(Work::TryClause {
                     goal: goal_value, clause_index: clauses[0],
-                    continuation: rest, invocation_barrier,
+                    continuation, invocation_barrier,
                 });
             }
         }

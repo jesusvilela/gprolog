@@ -26,9 +26,18 @@ fn ground_first_solution(target_facts: usize, repeated_goals: usize) {
     assert_eq!(observed.total_search_steps, (2 * repeated_goals + 1) as u64);
     assert_eq!(observed.resume_suffix_goals_materialized, suffix as u64);
     assert_eq!(observed.clause_choices_pushed, created as u64);
-    assert_eq!(observed.clause_continuation_vectors_cloned, created as u64);
+    let shared_calls = if target_facts > 1 { repeated_goals - 1 } else { 0 };
+    let empty_choice_clones = if target_facts > 1 { target_facts - 1 } else { 0 };
+    assert_eq!(observed.shared_continuation_anchors, shared_calls as u64);
+    assert_eq!(observed.shared_continuation_handle_clones,
+               (shared_calls * (target_facts - 1)) as u64);
+    assert_eq!(observed.shared_continuation_fallback_copies, shared_calls as u64);
+    // The last goal's empty continuation stays an Owned(Vec); its
+    // copied vectors contain zero elements.
+    assert_eq!(observed.clause_continuation_vectors_cloned,
+               (shared_calls + empty_choice_clones) as u64);
     assert_eq!(observed.clause_continuation_goals_cloned,
-               ((target_facts - 1) * suffix) as u64);
+               if target_facts > 1 { suffix as u64 } else { 0 });
     assert_eq!(observed.maximum_pending_choices, created);
     assert_eq!(observed.disjunction_choices_pushed, 0);
     assert_eq!(observed.disjunction_rest_goals_cloned, 0);
@@ -98,4 +107,47 @@ fn failed_partial_head_unification_is_rolled_back() {
     assert_eq!(observed.choicepoints_redone, 1);
     assert_eq!(observed.binding_writes, 2);
     assert_eq!(observed.binding_undo_writes, 1);
+}
+
+#[test]
+fn shared_suffix_preserves_four_answers_and_unwraps_on_last_redo() {
+    let program = parse_program("p(a). p(b). q(X,Y):-p(X),p(Y).").unwrap();
+    let query = parse_query("q(X,Y).", program.next_var).unwrap();
+    clear_choicepoint_profile();
+    let answers = solve(&program, &query, Limits {
+        max_steps: 1000, max_solutions: 4,
+    }).unwrap();
+    let tuples: Vec<_> = answers.into_iter().map(|sol| (
+        sol.bindings[0].1.clone(), sol.bindings[1].1.clone()
+    )).collect();
+    assert_eq!(tuples, [
+        ("a".into(), "a".into()), ("a".into(), "b".into()),
+        ("b".into(), "a".into()), ("b".into(), "b".into()),
+    ]);
+    let p = read_choicepoint_profile();
+    assert_eq!(p.shared_continuation_anchors, 1);
+    assert_eq!(p.shared_continuation_handle_clones, 1);
+    // First p(X) succeeds while its alternative owns one Arc; the
+    // later redo can unwrap that final owner without a second Vec clone.
+    assert_eq!(p.shared_continuation_fallback_copies, 1);
+    assert_eq!(p.choicepoints_redone, 3);
+}
+
+#[test]
+fn cut_prunes_a_shared_suffix_choice_without_redo() {
+    let program = parse_program(
+        "choose(a). choose(b). p(X):-choose(X),!,true."
+    ).unwrap();
+    let query = parse_query("p(X).", program.next_var).unwrap();
+    clear_choicepoint_profile();
+    let answers = solve(&program, &query, Limits {
+        max_steps: 1000, max_solutions: 16,
+    }).unwrap();
+    assert_eq!(answers.len(), 1);
+    assert_eq!(answers[0].bindings[0].1, "a");
+    let p = read_choicepoint_profile();
+    assert_eq!(p.shared_continuation_anchors, 1);
+    assert_eq!(p.shared_continuation_handle_clones, 1);
+    assert_eq!(p.cut_choicepoints_pruned, 1);
+    assert_eq!(p.choicepoints_redone, 0);
 }

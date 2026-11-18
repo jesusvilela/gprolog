@@ -15,6 +15,8 @@ COUNTERS = (
     "user_predicate_dispatches", "try_clause_tasks", "work_resume_tasks",
     "clause_choices_pushed", "disjunction_choices_pushed",
     "clause_continuation_vectors_cloned", "clause_continuation_goals_cloned",
+    "shared_continuation_anchors", "shared_continuation_handle_clones",
+    "shared_continuation_fallback_copies",
     "resume_suffix_goals_materialized", "disjunction_rest_goals_cloned",
     "choicepoints_redone", "cut_choicepoints_pruned", "binding_writes",
     "binding_undo_writes", "maximum_pending_choices", "total_search_steps",
@@ -41,14 +43,19 @@ def cases():
 def expected_first(t, r):
     suffix = r * (r - 1) // 2
     choices = (t - 1) * r
+    shared_calls = r - 1 if t > 1 else 0
+    empty_owned_copies = t - 1 if t > 1 else 0
     return {
         "user_predicate_dispatches": r,
         "try_clause_tasks": r,
         "work_resume_tasks": r + 1,
         "clause_choices_pushed": choices,
         "disjunction_choices_pushed": 0,
-        "clause_continuation_vectors_cloned": choices,
-        "clause_continuation_goals_cloned": (t - 1) * suffix,
+        "clause_continuation_vectors_cloned": shared_calls + empty_owned_copies,
+        "clause_continuation_goals_cloned": suffix if t > 1 else 0,
+        "shared_continuation_anchors": shared_calls,
+        "shared_continuation_handle_clones": shared_calls * (t - 1),
+        "shared_continuation_fallback_copies": shared_calls,
         "resume_suffix_goals_materialized": suffix,
         "disjunction_rest_goals_cloned": 0,
         "choicepoints_redone": 0,
@@ -72,6 +79,9 @@ def check_expected(label, kind, t, r, counts):
             "clause_choices_pushed": 0,
             "clause_continuation_vectors_cloned": 0,
             "clause_continuation_goals_cloned": 0,
+            "shared_continuation_anchors": 0,
+            "shared_continuation_handle_clones": 0,
+            "shared_continuation_fallback_copies": 0,
             "resume_suffix_goals_materialized": suffix,
             "choicepoints_redone": 0,
             "total_search_steps": r + 1,
