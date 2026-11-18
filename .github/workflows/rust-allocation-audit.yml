@@ -7,6 +7,8 @@ on:
       - 'tests/rust_allocation/**'
       - '.github/workflows/rust-allocation-audit.yml'
       - 'docs/RUST_NATIVE_ALLOCATION_AUDIT_PROTOCOL.md'
+      - 'docs/RUST_NATIVE_ALLOCATION_AUDIT_CORRECTIONS.md'
+      - 'tests/rust_allocation/results/generation20_allocation_summary.csv'
       - 'docs/RUST_NATIVE_ALLOCATION_AUDIT_RESULTS.md'
       - 'docs/RUST_NATIVE_ALLOCATION_AUDIT_MANIFEST.json'
   pull_request:
@@ -14,6 +16,8 @@ on:
       - 'tests/rust_allocation/**'
       - '.github/workflows/rust-allocation-audit.yml'
       - 'docs/RUST_NATIVE_ALLOCATION_AUDIT_PROTOCOL.md'
+      - 'docs/RUST_NATIVE_ALLOCATION_AUDIT_CORRECTIONS.md'
+      - 'tests/rust_allocation/results/generation20_allocation_summary.csv'
       - 'docs/RUST_NATIVE_ALLOCATION_AUDIT_RESULTS.md'
       - 'docs/RUST_NATIVE_ALLOCATION_AUDIT_MANIFEST.json'
   workflow_dispatch:
@@ -151,6 +155,43 @@ jobs:
           python3 tests/rust_allocation/compare_allocations.py \
             --released /tmp/gen18-alloc-probe --rejected /tmp/gen19-alloc-probe \
             --abi "$ABI" --output "$PWD/alloc-contrast-$ABI.json"
+      - name: Validate versioned audit manifest and fresh evidence linkage
+        env:
+          ABI: ${{ matrix.abi }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import csv, json, os
+          from pathlib import Path
+          abi = os.environ["ABI"]
+          source = json.loads(Path(f"alloc-contrast-{abi}.json").read_text())
+          semantic = json.loads(Path(f"alloc-semantic-{abi}.json").read_text())
+          manifest = json.loads(Path("docs/RUST_NATIVE_ALLOCATION_AUDIT_MANIFEST.json").read_text())
+          summary = list(csv.DictReader(Path("tests/rust_allocation/results/generation20_allocation_summary.csv").open()))
+          mandatory = {"task_id", "claim", "specification", "implementation",
+                       "metric", "tests", "controls", "preregistration",
+                       "evidence", "round_trip", "result"}
+          assert mandatory <= set(manifest)
+          assert manifest["claim"]["status_before"] == "H"
+          assert manifest["result"]["status_after"] == "M"
+          assert manifest["metric"]["type"] == "typed_tuple"
+          assert len(manifest["round_trip"]["edges"]) >= 6
+          assert manifest["evidence"]["independent_witnesses"] == [], (
+              "do not invent external independence")
+          assert source["passed"] and len(source["cases"]) == 13
+          assert semantic["passed"] and len(semantic["cases"]) == 264
+          assert len(summary) == 13
+          assert {row["case"] for row in summary} == set(source["cases"])
+          for row in summary:
+              case = source["cases"][row["case"]]
+              assert row["program_sha256"] == case["source_sha256"]
+              assert int(row["repeats"]) == case["repeats"]
+              assert int(row["max_solutions"]) == case["max_solutions"]
+          assert source["released_commit"] == "901c8b58c12fbe8b79f70b0118f951f3ed2fcf21"
+          assert source["rejected_commit"] == "c09fff05d9b3dd43fb90014278e3a98d701d3640"
+          print("Audited", abi, ": 13 source-linked allocator cases + 264 CLI cases; "
+                "no independent witness claimed")
+          PY
       - name: Upload raw evidence even when a preregistered gate fails
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
