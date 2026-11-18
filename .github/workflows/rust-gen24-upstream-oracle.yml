@@ -29,7 +29,28 @@ jobs:
           set -euo pipefail
           if [ -n "$PR_HEAD" ]; then
             git fetch --no-tags origin "$PR_HEAD"
-            test "$(git rev-parse HEAD^{tree})" = "$(git rev-parse "${PR_HEAD}^{tree}")"
+            if [ "$(git rev-parse HEAD)" = "$PR_HEAD" ]; then
+              test "$(git rev-parse HEAD^{tree})" = "$(git rev-parse "${PR_HEAD}^{tree}")"
+            else
+              # On a PR GitHub checks a synthetic merge (base + PR head).
+              # HEAD^{tree} legitimately differs from PR_HEAD^{tree}
+              # after another PR merges to master. Verify second parent
+              # and the exact authored paths, not equal entire trees.
+              test "$(git rev-parse HEAD^2)" = "$PR_HEAD"
+              for path in \
+                tests/rust_upstream_corpus/upstream/likes.pl \
+                tests/rust_upstream_corpus/upstream/README.md \
+                tests/rust_upstream_corpus/compare_swi.py \
+                tests/rust_upstream_corpus/validate_provenance.py \
+                docs/RUST_GEN24_UPSTREAM_ORACLE_PROTOCOL.md \
+                docs/RUST_GEN24_UPSTREAM_ORACLE_RESULTS.md \
+                docs/RUST_GEN24_UPSTREAM_ORACLE_CORRECTIONS.md \
+                docs/RUST_GEN24_UPSTREAM_ORACLE_MANIFEST.json \
+                .github/workflows/rust-gen24-upstream-oracle.yml
+              do
+                test "$(git rev-parse "HEAD:$path")" = "$(git rev-parse "$PR_HEAD:$path")"
+              done
+            fi
           fi
           git fetch --no-tags origin refs/pull/18/head
           BASE=901c8b58c12fbe8b79f70b0118f951f3ed2fcf21
