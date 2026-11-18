@@ -89,7 +89,7 @@ def classify_swi(rec):
     if rec["exit"] != 0:
         return "failed_load"
     if rec["stderr"]:
-        return "loaded_with_diagnostics"
+        return "process_exit0_with_diagnostics"
     return "clean_load"
 
 
@@ -128,7 +128,16 @@ def run(gen24, gen25, swi, external_oracle):
             probe[role] = {**rec, "outcome": classify_rust(rec)}
         witness = call([swi, "-q", "-f", "none", "-s", path,
                         "-g", "true", "-t", "halt"])
-        probe["SWI_reference"] = {**witness, "outcome": classify_swi(witness)}
+        # A zero OS exit does not certify an error-free source load:
+        # older SWI may emit ERROR diagnostics yet return code 0.
+        probe["SWI_reference"] = {
+            **witness,
+            "outcome": classify_swi(witness),
+            "stderr_has_error_diagnostic": any(
+                line.lstrip().startswith("ERROR:")
+                for line in witness["stderr"].splitlines()
+            ),
+        }
         raw[name] = {**source, **probe}
     if raw["likes.pl"]["merged_gen25"]["outcome"] != "accepted_and_true":
         raise RuntimeError("Gen25 no longer accepts the unmodified likes.pl positive control")

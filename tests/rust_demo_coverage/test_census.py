@@ -18,7 +18,7 @@ def test():
     assert classify_rust({"exit": 2, "stdout": "", "stderr": "unknown predicate"}) == "runtime_or_other_failure"
     assert classify_rust({"exit": 0, "stdout": "false.\n", "stderr": ""}) == "runtime_or_other_failure"
     assert classify_swi({"exit": 0, "stderr": ""}) == "clean_load"
-    assert classify_swi({"exit": 0, "stderr": "Warning"}) == "loaded_with_diagnostics"
+    assert classify_swi({"exit": 0, "stderr": "Warning"}) == "process_exit0_with_diagnostics"
     assert classify_swi({"exit": 1, "stderr": "Error"}) == "failed_load"
     print("GEN26 known-answer census, original source hashes and negative classes PASS")
 
