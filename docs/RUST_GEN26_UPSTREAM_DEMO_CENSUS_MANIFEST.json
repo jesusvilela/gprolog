@@ -1,0 +1,277 @@
+{
+  "task_id": "gprolog-gen26-four-file-upstream-demo-census-2026-11-18",
+  "claim": {
+    "text": "The complete four-file public-domain SWI-Prolog demo corpus at a pinned upstream commit shows Gen25 Rust accepts exactly likes.pl directly, where Gen24 accepted none; three other files remain syntax rejected, while SWI 9.0.4 exits zero with ERROR diagnostics on these, so exit 0 is not clean load.",
+    "scope": "Four original public-domain demo/*.pl programs at upstream commit 111385b9, native Rust Gen24 vs Gen25 ELF64 and system SWI-Prolog 9.0.4; 12 live SWI semantic likes.pl queries, 264 historical Rust CLI comparisons.",
+    "status_before": "H",
+    "assumptions": [
+      "Original public-domain source Git blobs and byte lengths match pinned repository content",
+      "One Rust true/0 load probe is a parser/loader observation, not an exhaustive semantic oracle",
+      "SWI stderr may contain ERROR despite process exit 0",
+      "SWI 9.0.4 may be older than upstream source syntax"
+    ],
+    "forbidden_promotions": [
+      "Do not count directory acceptance as general ISO Prolog compliance",
+      "Do not count SWI exit-zero with ERROR as successful source load",
+      "Do not treat intentionally non-executable colours.pl as an ordinary conformance failure",
+      "Do not infer runtime performance or a single-token full parser remedy",
+      "Do not call project-authored source selection independent experimental authorship"
+    ]
+  },
+  "specification": {
+    "intended_object": "Source identity, typed Rust and SWI loader outcome, and specific independent likes semantic oracle for exactly four original third-party public-domain programs.",
+    "invariants": [
+      "All four exact original Git source files and README are present and hash-verified",
+      "No source preprocessing, transformation or silent exclusions",
+      "Original Rust Gen24 and Gen25 use identical true./fixed limits probes",
+      "SWI source loader exit, stdout and stderr observed separately",
+      "Twelve independent SWI Prolog ordered likes.pl outputs match untouched Gen25",
+      "264 historical full-output Rust CLI cases preserved"
+    ],
+    "known_answer_cases": [
+      "likes.pl original accepted in Gen25 and syntax-rejected in Gen24",
+      "colours.pl original explicitly comments that this code does not run",
+      "all four source Git blobs and byte sizes",
+      "SWI raw exit zero with ERROR stderr is not a clean load"
+    ]
+  },
+  "implementation": {
+    "artifact": "tests/rust_demo_coverage/upstream/*; census.py; test_census.py; validate_gen26.py; .github/workflows/rust-gen26-upstream-census.yml",
+    "commit": "Gen24 fb9e05acd87e3fe71052e83ef38f26b9c12701d3; Gen25 ef2c9869d2224a4c8ee1dbba6df965c8fd286e6f; upstream 111385b90852dade2b772d074cc55fefa20ee1a9",
+    "environment": "Ubuntu 24.04 ELF64, Rust 1.85.1, SWI-Prolog 9.0.4 (source reference different release window), Python 3 stdlib",
+    "live_entrypoint": "gprolog-rs original.pl true. --max-solutions 1 --max-steps 100000; swipl -q -f none -s original.pl -g true -t halt; separate 12 original likes.pl SWI reference",
+    "representation": "Source SHA/byte provenance, structured triple (process exit, stdout, stderr) and explicit diagnostic/error statuses by engine"
+  },
+  "metric": {
+    "name": "Typed four-source per-engine load state, independent likes.pl ordered answer parity and historical Rust semantic parity",
+    "type": "typed_tuple",
+    "units": "4 source rows x 3 loader states, 12 likes ordered outputs, 264 historical strict CLI result flags",
+    "direction": "partial_order",
+    "raw_before_clipping": true,
+    "semantic_invariance_claimed": false,
+    "equivalence_attacks": [
+      "Same original bytes under Rust Gen24 and Gen25",
+      "SWI process exit 0 with and without stderr ERROR",
+      "Intentionally non-executable source versus runnable knowledge base",
+      "Source byte first-failure diagnostic across release versions"
+    ]
+  },
+  "tests": {
+    "black_box": [
+      "Four exact original sources loaded/probed through independent SWI and both Rust versions",
+      "Independent 12-query SWI semantic oracle on original likes.pl",
+      "264 strict full-output historical Rust CLI comparison"
+    ],
+    "structural": [
+      "Original Git blob identities, byte lengths, public-domain README and colours.pl non-exec note",
+      "Recomputed outcome classifiers and raw source probes",
+      "SWI stderr_has_error_diagnostic with exact exit status"
+    ],
+    "property_based": [
+      "not applicable: fixed complete four-program upstream directory, no population sampling"
+    ],
+    "metamorphic": [
+      "Exact original file across Gen24/Gen25 and SWI reference",
+      "Positive likes direct original vs normalized source controls",
+      "Error-bearing SWI exit-zero versus true clean load"
+    ],
+    "fuzzing": [
+      "not applicable: no additional fuzz generator; historical deterministic 264-case regression"
+    ],
+    "historical": [
+      "Gen24 pre-block-comment source and Gen25 merged parser implementation, immutable",
+      "Gen25 original likes SWI independent semantic proof of concept"
+    ]
+  },
+  "controls": {
+    "matched_baselines": [
+      "Same four original file bytes, ELF64 Rust build compiler flags, query and source resource limits across Gen24/Gen25",
+      "SWI-Prolog loader on same exact upstream original files"
+    ],
+    "negative_controls": [
+      "colours.pl intentionally non-executable according to original source comment",
+      "Three SWI stderr ERROR cases despite process exit 0",
+      "Three remaining Rust parser syntax failures",
+      "Gen24 older original likes.pl block-comment rejection"
+    ],
+    "compute_parity": "Rust Gen24 and Gen25 compiled under the same pinned compiler+ABI; SWI is independent third-party evaluator without time/cycle comparison.",
+    "parameter_parity": "Identical original source files, true. query and Rust limits max_solutions 1 and max_steps 100000; 12 likes semantic control uses fixed 32 and 100000.",
+    "sampling_parity": "One complete same-upstream-directory four-file census, no randomized sample and no inferential population confidence.",
+    "data_access_parity": "Four exact source Git SHA1 and README license authority, no source preprocessing; SWI and both Rust load actual same files."
+  },
+  "preregistration": {
+    "prediction": "Gen25 adds acceptance of original likes.pl relative to Gen24; other programs likely remain constrained by syntax not yet implemented; no predeclared exact error offsets for those other files.",
+    "primary_metric": "Typed complete four-source outcomes under Gen24, Gen25 and independently executed SWI; source identity, twelve likes semantic matches and 264 strict historical matches.",
+    "uncertainty_method": "Full directory descriptive enumeration, no confidence interval or general Prolog population; SWI version older than pinned 2026 source and diagnostic semantics are method-specific.",
+    "kill_condition": "Mismatched original SHA/licensing, corpus exclusion, missing SWI version, hidden preprocessing, misleading source classification, failed likes SWI answer vector or 264 strict regression.",
+    "stop_condition": "No new syntax/engine fixes or denominator edits to rescue a negative result; next feature needs independent source-based protocol.",
+    "promotion_rule": "M for exact observed source-directory outcomes, not broader Prolog semantic compatibility or performance; independent SWI only witnesses likes semantics."
+  },
+  "evidence": {
+    "primary_sources": [
+      "https://github.com/SWI-Prolog/swipl-devel/tree/111385b90852dade2b772d074cc55fefa20ee1a9/demo",
+      "https://github.com/SWI-Prolog/swipl-devel/blob/111385b90852dade2b772d074cc55fefa20ee1a9/demo/README.md",
+      "https://github.com/SWI-Prolog/swipl-devel/blob/111385b90852dade2b772d074cc55fefa20ee1a9/demo/colours.pl"
+    ],
+    "execution_records": [
+      "First unsuccessful pre-execution provenance run 44379688202 retained",
+      "First complete original-source census run 44379921375, raw artifact 14462258854, before label correction",
+      "Final corrected-label and audit gated CI run required before merge"
+    ],
+    "independent_witnesses": [
+      {
+        "name": "SWI-Prolog 9.0.4 external loader and original likes/2 executable oracle",
+        "origin": "Independent software interpreter and externally authored public-domain program source, not independent experimental investigator",
+        "artifact": "gen26-complete-demo-census.json plus gen26-original-likes-oracle.json in original CI artifact 14462258854"
+      }
+    ],
+    "claim_to_artifact_map": [
+      "Four source byte identities -> vendored upstream files and Git hash checks",
+      "0/4 vs 1/4 Rust original-source acceptance -> complete census raw Rust result triples",
+      "Three SWI ERROR diagnostics despite exit0 -> raw SWI_reference.stderr and outcome classification",
+      "Source-first-rejected-byte -> Rust stderr verbatim with byte offset",
+      "Twelve likes ordered answers -> live SWI findall canonical output and Rust original-source output",
+      "264 strict historical Rust cases -> gen26-historical-elf64.json"
+    ]
+  },
+  "round_trip": {
+    "edges": [
+      {
+        "from": "original source census requirement",
+        "to": "pinned upstream source/license and typed loader contract",
+        "preserved": [
+          "four exact original source blobs, license and full denominator",
+          "typed stderr and exit separately",
+          "no source adaptation or engine changes"
+        ],
+        "transformed": [
+          "lexer/loader outcome classified by exact raw process observables"
+        ],
+        "lost": [
+          "no full semantic oracle for three diagnostic-bearing files",
+          "no independent population of actual industrial Prolog programs"
+        ],
+        "remainder": [
+          "reference version mismatch and intentionally invalid source",
+          "native time/CPU cost not measured"
+        ]
+      },
+      {
+        "from": "pinned upstream source/license and typed loader contract",
+        "to": "unmodified source probe implementation",
+        "preserved": [
+          "four exact original source blobs, license and full denominator",
+          "typed stderr and exit separately",
+          "no source adaptation or engine changes"
+        ],
+        "transformed": [
+          "lexer/loader outcome classified by exact raw process observables"
+        ],
+        "lost": [
+          "no full semantic oracle for three diagnostic-bearing files",
+          "no independent population of actual industrial Prolog programs"
+        ],
+        "remainder": [
+          "reference version mismatch and intentionally invalid source",
+          "native time/CPU cost not measured"
+        ]
+      },
+      {
+        "from": "unmodified source probe implementation",
+        "to": "live SWI + Rust Gen24/25 executions",
+        "preserved": [
+          "four exact original source blobs, license and full denominator",
+          "typed stderr and exit separately",
+          "no source adaptation or engine changes"
+        ],
+        "transformed": [
+          "lexer/loader outcome classified by exact raw process observables"
+        ],
+        "lost": [
+          "no full semantic oracle for three diagnostic-bearing files",
+          "no independent population of actual industrial Prolog programs"
+        ],
+        "remainder": [
+          "reference version mismatch and intentionally invalid source",
+          "native time/CPU cost not measured"
+        ]
+      },
+      {
+        "from": "live SWI + Rust Gen24/25 executions",
+        "to": "four-row raw output and case reference controls",
+        "preserved": [
+          "four exact original source blobs, license and full denominator",
+          "typed stderr and exit separately",
+          "no source adaptation or engine changes"
+        ],
+        "transformed": [
+          "lexer/loader outcome classified by exact raw process observables"
+        ],
+        "lost": [
+          "no full semantic oracle for three diagnostic-bearing files",
+          "no independent population of actual industrial Prolog programs"
+        ],
+        "remainder": [
+          "reference version mismatch and intentionally invalid source",
+          "native time/CPU cost not measured"
+        ]
+      },
+      {
+        "from": "four-row raw output and case reference controls",
+        "to": "bounded compatibility interpretation",
+        "preserved": [
+          "four exact original source blobs, license and full denominator",
+          "typed stderr and exit separately",
+          "no source adaptation or engine changes"
+        ],
+        "transformed": [
+          "lexer/loader outcome classified by exact raw process observables"
+        ],
+        "lost": [
+          "no full semantic oracle for three diagnostic-bearing files",
+          "no independent population of actual industrial Prolog programs"
+        ],
+        "remainder": [
+          "reference version mismatch and intentionally invalid source",
+          "native time/CPU cost not measured"
+        ]
+      },
+      {
+        "from": "bounded compatibility interpretation",
+        "to": "original source census requirement",
+        "preserved": [
+          "four exact original source blobs, license and full denominator",
+          "typed stderr and exit separately",
+          "no source adaptation or engine changes"
+        ],
+        "transformed": [
+          "lexer/loader outcome classified by exact raw process observables"
+        ],
+        "lost": [
+          "no full semantic oracle for three diagnostic-bearing files",
+          "no independent population of actual industrial Prolog programs"
+        ],
+        "remainder": [
+          "reference version mismatch and intentionally invalid source",
+          "native time/CPU cost not measured"
+        ]
+      }
+    ]
+  },
+  "result": {
+    "observed": "Original complete 2026-11-18 runner: 4/4 preserved sources; Gen24 Rust original acceptance 0/4, Gen25 1/4 (likes.pl only), other 3 Rust syntax-rejected. SWI 9.0.4 process exit0 on all, but 3 stderr contain ERROR diagnostics, only likes is clean. 12/12 live independent SWI original-source likes answers and 264/264 historical Rust outputs passed. Corrected outcome label must be replayed on final head.",
+    "effect_size": "Typed four-row original-source acceptance shift 0/4 to 1/4; SWI 1 clean load and 3 process-exit0-with-ERROR; 12/12 likes semantic matches; 264/264 Rust regression cases.",
+    "uncertainty": "Single selected upstream public-domain demo directory, some files intentionally invalid or newer syntax than distro SWI 9.0.4; project-authored harness and interpretation; not independent authored empirical study or general language coverage.",
+    "status_after": "M",
+    "retired_claims": [
+      "SWI exit code 0 always means clean successful source load",
+      "Claiming colours.pl intended non-executable note was in README (it is in original source)",
+      "Treating this fixed four-file census as universal ISO Prolog acceptance percentage"
+    ],
+    "active_remainder": [
+      "Independent SWI load diagnostics on newer-source files are version-sensitive",
+      "Unmodified external programs with broader supported syntax",
+      "Feature-prioritization needs separate source-backed protocol, not inferred from first rejected token"
+    ]
+  }
+}
