@@ -125,7 +125,7 @@ jobs:
             --baseline /tmp/cross-13-bench --candidate /tmp/cross-14-bench \
             --baseline-cli /tmp/cross-13-cli --candidate-cli /tmp/cross-14-cli \
             --abi "$ABI" --output "$PWD/crossover-$ABI.json"
-      - name: Check published CSV against fresh per-ABI raw samples
+      - name: Check input determinism and primary effect reproducibility
         env:
           ABI: ${{ matrix.abi }}
         run: |
@@ -139,13 +139,25 @@ jobs:
           assert report['passed'] and report['black_box_unknown']['passed']
           assert len(table)==24 and len(report['cases'])==24
           for row in table:
-              current=report['cases'][row['case']]
-              assert row['source_sha256']==current['source_sha256']
-              assert abs(float(row[abi+'_change_pct'])-current['candidate_change_pct'])<1e-9
-              assert int(row[abi+'_wins_of_5'])==current['candidate_faster_blocks_of_5']
-              assert float(row[abi+'_baseline_ns'])==current['baseline_median_solve_ns']
-              assert float(row[abi+'_cached_ns'])==current['candidate_median_solve_ns']
-          print('Versioned matrix matches 24 fresh raw per-ABI cases:',abi)
+              case=report['cases'][row['case']]
+              # Deterministic metadata and source bytes MUST reproduce.
+              assert row['source_sha256']==case['source_sha256'], row['case']
+              assert row['class']==case['class'], row['case']
+              assert int(row['N'])==case['n'], row['case']
+              assert int(row['T'])==case['target_head_count'], row['case']
+              assert int(row['R'])==case['repeated_goals'], row['case']
+              assert len(case['blocks'])==5, row['case']
+              for block in case['blocks']:
+                  assert len(block['baseline']['nanos'])==4
+                  assert len(block['candidate']['nanos'])==4
+                  assert block['baseline']['answers']==block['candidate']['answers']
+          # Timing medians are stochastic across CI runners; NEVER require
+          # equality with the medians of an earlier runner/snapshot.
+          primary=report['cases']['grid_n10000_t1_r64']
+          assert primary['benefit_gate'] and primary['candidate_faster_blocks_of_5']>=4, (
+              'preregistered primary benefit failed on '+abi)
+          print('Reproduced case metadata, answer parity and primary benefit on',abi,
+                'observed effect',primary['candidate_change_pct'],'percent')
           PY
       - name: Upload raw results even if gate fails
         if: always()
