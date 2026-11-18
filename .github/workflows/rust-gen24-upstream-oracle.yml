@@ -1,0 +1,138 @@
+name: Gen24 genuine upstream Prolog + independent SWI oracle (no engine edits)
+
+on:
+  pull_request:
+    paths:
+      - 'tests/rust_upstream_corpus/**'
+      - 'docs/RUST_GEN24_*'
+      - '.github/workflows/rust-gen24-upstream-oracle.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  swi-reference:
+    name: Original public-domain source / SWI executable oracle / pinned Rust subsets
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout source snapshot and test harness
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          fetch-depth: 80
+      - name: Confirm actual PR head tree and two immutable Rust source commits
+        env:
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          if [ -n "$PR_HEAD" ]; then
+            git fetch --no-tags origin "$PR_HEAD"
+            if [ "$(git rev-parse HEAD)" = "$PR_HEAD" ]; then
+              test "$(git rev-parse HEAD^{tree})" = "$(git rev-parse "${PR_HEAD}^{tree}")"
+            else
+              # On a PR GitHub checks a synthetic merge (base + PR head).
+              # HEAD^{tree} legitimately differs from PR_HEAD^{tree}
+              # after another PR merges to master. Verify second parent
+              # and the exact authored paths, not equal entire trees.
+              test "$(git rev-parse HEAD^2)" = "$PR_HEAD"
+              for path in \
+                tests/rust_upstream_corpus/upstream/likes.pl \
+                tests/rust_upstream_corpus/upstream/README.md \
+                tests/rust_upstream_corpus/compare_swi.py \
+                tests/rust_upstream_corpus/validate_provenance.py \
+                docs/RUST_GEN24_UPSTREAM_ORACLE_PROTOCOL.md \
+                docs/RUST_GEN24_UPSTREAM_ORACLE_RESULTS.md \
+                docs/RUST_GEN24_UPSTREAM_ORACLE_CORRECTIONS.md \
+                docs/RUST_GEN24_UPSTREAM_ORACLE_MANIFEST.json \
+                .github/workflows/rust-gen24-upstream-oracle.yml
+              do
+                test "$(git rev-parse "HEAD:$path")" = "$(git rev-parse "$PR_HEAD:$path")"
+              done
+            fi
+          fi
+          git fetch --no-tags origin refs/pull/18/head
+          BASE=901c8b58c12fbe8b79f70b0118f951f3ed2fcf21
+          REJECTED=c09fff05d9b3dd43fb90014278e3a98d701d3640
+          git cat-file -e "${BASE}^{commit}"
+          git cat-file -e "${REJECTED}^{commit}"
+          git worktree add --detach /tmp/gen24-rust18 "$BASE"
+          git worktree add --detach /tmp/gen24-rust19 "$REJECTED"
+          test "$(git -C /tmp/gen24-rust18 rev-parse HEAD)" = "$BASE"
+          test "$(git -C /tmp/gen24-rust19 rev-parse HEAD)" = "$REJECTED"
+      - name: Verify untouched upstream blob SHA1, licensing and documentation block
+        run: |
+          set -euo pipefail
+          cd tests/rust_upstream_corpus/upstream
+          test "$(git hash-object likes.pl)" = 88f3d2edcb0fb68c99b559676e5982b3780715f6
+          test "$(git hash-object README.md)" = fb3850a4dae3c29faea7907d9b3cd48d940fcfaa
+          grep -F 'All files in this demo directory are in the public domain.' README.md
+          grep -F 'Copyright: Public domain' likes.pl
+          wc -c likes.pl README.md
+      - name: Install pinned Rust and independent SWI-Prolog system interpreter
+        run: |
+          set -euo pipefail
+          timeout 240 rustup toolchain install 1.85.1 --profile minimal
+          timeout 120 rustup target add x86_64-unknown-linux-gnu --toolchain 1.85.1
+          if ! command -v swipl >/dev/null 2>&1; then
+            sudo timeout 240 apt-get update -qq
+            sudo timeout 1200 env DEBIAN_FRONTEND=noninteractive \
+              apt-get install -y -o Acquire::Retries=3 --no-install-recommends swi-prolog-nox
+          fi
+          rustc +1.85.1 --version
+          swipl --version
+          dpkg-query -W -f='${Package} ${Version}\n' swi-prolog-nox || true
+      - name: Compile source-frozen, feature-disabled Rust binaries
+        run: |
+          set -euo pipefail
+          for gen in 18 19; do
+            CARGO_TARGET_DIR="/tmp/gen24-rust${gen}-target" \
+              cargo +1.85.1 build --release --target x86_64-unknown-linux-gnu \
+              --manifest-path "/tmp/gen24-rust${gen}/Cargo.toml"
+            cp "/tmp/gen24-rust${gen}-target/x86_64-unknown-linux-gnu/release/gprolog-rs" \
+              "/tmp/gen24-rust${gen}-cli"
+            readelf -h "/tmp/gen24-rust${gen}-cli" | grep -E 'Class:.*ELF64'
+            if ldd "/tmp/gen24-rust${gen}-cli" | grep -Ei 'libgprolog|libgprolog_float_decimal'; then
+              echo "Unexpected historical C bridge" >&2
+              exit 1
+            fi
+          done
+      - name: Independent executable SWI oracle, strict original parser negative, all 12 queries
+        run: |
+          set -euo pipefail
+          python3 -m py_compile tests/rust_upstream_corpus/compare_swi.py
+          python3 tests/rust_upstream_corpus/compare_swi.py \
+            --swi swipl --gen18 /tmp/gen24-rust18-cli \
+            --gen19 /tmp/gen24-rust19-cli \
+            --output "$PWD/gen24-swi-semantic-elf64.json"
+      - name: Repeat historical 264-case exact CLI differential independently
+        run: |
+          set -euo pipefail
+          python3 /tmp/gen24-rust19/tests/rust_two_clause/differential_owned.py \
+            --baseline /tmp/gen24-rust18-cli \
+            --candidate /tmp/gen24-rust19-cli \
+            --abi elf64 --output "$PWD/gen24-historical-elf64.json"
+      - name: Verify final-head SWI witness, fixed caps and audit provenance
+        run: |
+          set -euo pipefail
+          python3 -m py_compile tests/rust_upstream_corpus/validate_provenance.py
+          python3 tests/rust_upstream_corpus/validate_provenance.py \
+            --data "$PWD/gen24-swi-semantic-elf64.json" \
+            --historical "$PWD/gen24-historical-elf64.json"
+      - name: Upload successful and negative provenance raw files
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: gen24-upstream-swi-oracle-elf64
+          path: |
+            gen24-swi-semantic-elf64.json
+            gen24-historical-elf64.json
+            tests/rust_upstream_corpus/upstream/likes.pl
+            tests/rust_upstream_corpus/upstream/README.md
+            docs/RUST_GEN24_UPSTREAM_ORACLE_PROTOCOL.md
+            docs/RUST_GEN24_UPSTREAM_ORACLE_CORRECTIONS.md
+            docs/RUST_GEN24_UPSTREAM_ORACLE_RESULTS.md
+            docs/RUST_GEN24_UPSTREAM_ORACLE_MANIFEST.json
+          retention-days: 30
+          if-no-files-found: warn
