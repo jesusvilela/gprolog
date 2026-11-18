@@ -227,6 +227,15 @@ pub fn solve(program: &Program, query: &Query, limits: Limits)
     }
     let mut next_var = query.next_var.max(program.next_var);
     let mut bindings = BindingStore::default();
+    // Build a per-solve catalogue. Retain every source index, including
+    // duplicated heads, in textual order; never omit a failed head attempt.
+    let mut predicate_index: HashMap<(String, usize), Vec<usize>> = HashMap::new();
+    for (index, clause) in program.clauses.iter().enumerate() {
+        if let Some((name, arity)) = clause.head.functor() {
+            predicate_index.entry((name.to_owned(), arity))
+                .or_default().push(index);
+        }
+    }
     let mut alternatives: Vec<ChoicePoint> = Vec::new();
     let mut active = Some(Work::Resume(query.goals.iter().cloned()
         .map(|term| PendingGoal { term, cut_barrier: 0 }).collect()));
@@ -340,13 +349,8 @@ pub fn solve(program: &Program, query: &Query, limits: Limits)
                     return Err(SolveError::UnsupportedGoal(
                         show_term(&goal_value, &bindings, 0)));
                 };
-                let clauses: Vec<usize> = program.clauses.iter().enumerate()
-                    .filter_map(|(i, clause)|
-                        (clause.head.functor() == Some((name, arity))).then_some(i))
-                    .collect();
-                if clauses.is_empty() {
-                    return Err(SolveError::UnknownPredicate(name.into(), arity));
-                }
+                let clauses = predicate_index.get(&(name.to_owned(), arity))
+                    .ok_or_else(|| SolveError::UnknownPredicate(name.into(), arity))?;
                 // Capture the invocation's caller alternatives BEFORE
                 // pushing this predicate's alternative clauses.
                 let invocation_barrier = alternatives.len();
