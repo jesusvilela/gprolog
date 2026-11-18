@@ -1,0 +1,253 @@
+{
+  "task_id": "gprolog-gen21-external-profile-2026-11-18",
+  "claim": {
+    "text": "Retired Gen19 two-clause eager continuation policy incurs larger native solve-only time, whole-process heap operations and dynamic instruction references than immutable Gen18 when first same-signature clause fails.",
+    "scope": "Seven fixed native timing cases on ELF64/i686; six fixed third-party Valgrind DHAT and Callgrind cases on ELF64 only; Rust 1.85.1.",
+    "status_before": "H",
+    "assumptions": [
+      "Same frozen source tree Gen18 and Gen19 in every comparison",
+      "Same external harness, same program/query bytes and limits",
+      "DHAT and Callgrind process-wide counters are not solve-exclusive"
+    ],
+    "forbidden_promotions": [
+      "No full ISO/GNU Prolog language conformance",
+      "No independent experimental authorship",
+      "No hardware cycle or causal percentage attribution",
+      "No i686 Valgrind observations",
+      "No resurrection of retired Gen19 T2-owned optimization"
+    ]
+  },
+  "specification": {
+    "intended_object": "Typed evidence tuple: native solve-only nanoseconds, DHAT whole-process heap allocations/bytes and Callgrind whole-process dynamic instruction references.",
+    "invariants": [
+      "264/264 strict CLI stdout/stderr/exit parity per ABI",
+      "Same SHA256 input files and query content per case across variants",
+      "PREPARE-only and SOLVE modes use same parser inputs",
+      "No source modification to frozen Rust engines"
+    ],
+    "known_answer_cases": [
+      "T2 first-fail R128 and T2 first-success R128",
+      "T1/T3/builtin ownership-neutral controls",
+      "Nested deep first-fail R64",
+      "PREPARE-only exact equality across versions"
+    ]
+  },
+  "implementation": {
+    "artifact": "tests/rust_external_profile/native_timing.py; external_profile.rs; external_valgrind.py; fixtures.py; .github/workflows/rust-external-profile.yml",
+    "commit": "Gen18 901c8b58c12fbe8b79f70b0118f951f3ed2fcf21 vs retired Gen19 c09fff05d9b3dd43fb90014278e3a98d701d3640",
+    "environment": "Ubuntu 24.04; Rust 1.85.1 release with feature-disabled libraries; native ELF64/i686 and Valgrind 3.22.0 ELF64",
+    "live_entrypoint": "Matched native Rust Instant timer around solve(); external Valgrind DHAT/Callgrind on process-wide PREPARE and SOLVE modes.",
+    "representation": "Typed tuples of raw native nanosecond samples, DHAT heap totals and Callgrind Ir values"
+  },
+  "metric": {
+    "name": "Native solve time plus independent-instrument whole-process DHAT heap and Callgrind dynamic instructions",
+    "type": "typed_tuple",
+    "units": "nanoseconds, whole-process bytes/blocks, dynamic instruction references",
+    "direction": "partial_order",
+    "raw_before_clipping": true,
+    "semantic_invariance_claimed": false,
+    "equivalence_attacks": [
+      "Swap first two same-signature clause successes/failures",
+      "Deep compound term cloning",
+      "T1/T3/builtin unchanged-path controls",
+      "PREPARE-only vs SOLVE matched process mode"
+    ]
+  },
+  "tests": {
+    "black_box": [
+      "264 strict full-output Rust CLI differential per ABI",
+      "Full Debug result equality in 7 native cases on both ABIs",
+      "External Valgrind PREPARE/SOLVE output equality across variants for six cases"
+    ],
+    "structural": [
+      "Frozen source SHA checks and target ELF class verification",
+      "DHAT version 3.22.0 machine-readable JSON plus Total bytes/blocks log",
+      "Callgrind Ir event-column and summary parse"
+    ],
+    "property_based": [
+      "Historical deterministic seeded differential cases"
+    ],
+    "metamorphic": [
+      "First successful vs failed same-signature head",
+      "T1/T3/builtin unchanged solver ownership controls",
+      "PREPARE-only identical source/query inputs"
+    ],
+    "fuzzing": [
+      "Previously frozen seeded differential corpus, not new unrestricted fuzzing"
+    ],
+    "historical": [
+      "Merged Gen18 performance and 241 strict CLI tests",
+      "Retired Gen19 failed gates and Gen20 authored GlobalAlloc counters"
+    ]
+  },
+  "controls": {
+    "matched_baselines": [
+      "Immutable Gen18 vs retired Gen19 linked to exactly same external benchmark harness",
+      "Same target ABI within each native comparison"
+    ],
+    "negative_controls": [
+      "T1/T3/builtin near-parity controls",
+      "First-success T2 without extra avoided copies",
+      "PREPARE-only Valgrind source preparation baseline"
+    ],
+    "compute_parity": "Same runner ABI/compiler release flags per pair; Valgrind 3.22.0 ELF64 only; 5 AB/BA native blocks.",
+    "parameter_parity": "Same source files, query goals, max solutions and max steps per case.",
+    "sampling_parity": "Twenty native timing samples per variant/case/ABI with three warmups per process; one external DHAT and Callgrind process per case, mode and version.",
+    "data_access_parity": "Program SHA256 and input text fixed per case; same corpus across independent measurement lanes."
+  },
+  "preregistration": {
+    "prediction": "Gen19/Gen18 native first-fail R128 >=3x and >4/5 slower blocks each ABI; external DHAT heap blocks and bytes >=3x and Callgrind Ir >=2x on ELF64, with T3 controls within 10%.",
+    "primary_metric": "Typed region with native slowdown ratios and external heap/instruction ratios; never collapse into a universal scalar.",
+    "uncertainty_method": "Twenty native samples per version/case/ABI across five paired blocks; external instrument one invocation per case/tool/mode/version; no external independent replication or confidence interval.",
+    "kill_condition": "Mismatch in ordered results, frozen SHA or ELF class; profiler format/exit error; first-fail or control threshold violated.",
+    "stop_condition": "No new ownership heuristic, GC, WAM or heap design to rescue non-passing data.",
+    "promotion_rule": "M only for bounded native time and ELF64 external profiler counts with raw evidence/controls; general/causal claims remain H."
+  },
+  "evidence": {
+    "primary_sources": [
+      "Frozen Gen18 and Gen19 Git commits",
+      "https://valgrind.org/docs/manual/dh-manual.html",
+      "https://valgrind.org/docs/manual/cl-manual.html"
+    ],
+    "execution_records": [
+      "https://github.com/jesusvilela/gprolog/actions/runs/44302879486",
+      "ELF64 native artifact 14427151334",
+      "i686 native artifact 14425834205",
+      "ELF64 third-party Valgrind artifact 14427545662"
+    ],
+    "independent_witnesses": [],
+    "claim_to_artifact_map": [
+      "Native timing -> gen21-native-timing-elf64/elf32.json and native summary CSV",
+      "Behavior parity -> gen21-native-semantic-elf64/elf32.json",
+      "External heap/instruction counters -> gen21-external-elf64.json, raw DHAT JSON/log and Callgrind txt",
+      "Program identities -> source SHA256 in fixture CSV and raw JSON"
+    ]
+  },
+  "round_trip": {
+    "edges": [
+      {
+        "from": "research requirement",
+        "to": "frozen source/input definitions",
+        "preserved": [
+          "frozen source SHA",
+          "matched program SHA256",
+          "no interpreter changes"
+        ],
+        "transformed": [
+          "measurements and interpretation"
+        ],
+        "lost": [
+          "isolated hardware-cycle attribution"
+        ],
+        "remainder": [
+          "independent external author or Prolog oracle absent"
+        ]
+      },
+      {
+        "from": "frozen source/input definitions",
+        "to": "external binary representations",
+        "preserved": [
+          "frozen source SHA",
+          "matched program SHA256",
+          "no interpreter changes"
+        ],
+        "transformed": [
+          "measurements and interpretation"
+        ],
+        "lost": [
+          "isolated hardware-cycle attribution"
+        ],
+        "remainder": [
+          "independent external author or Prolog oracle absent"
+        ]
+      },
+      {
+        "from": "external binary representations",
+        "to": "native and third-party instruments",
+        "preserved": [
+          "frozen source SHA",
+          "matched program SHA256",
+          "no interpreter changes"
+        ],
+        "transformed": [
+          "measurements and interpretation"
+        ],
+        "lost": [
+          "isolated hardware-cycle attribution"
+        ],
+        "remainder": [
+          "independent external author or Prolog oracle absent"
+        ]
+      },
+      {
+        "from": "native and third-party instruments",
+        "to": "typed raw measurements",
+        "preserved": [
+          "frozen source SHA",
+          "matched program SHA256",
+          "no interpreter changes"
+        ],
+        "transformed": [
+          "measurements and interpretation"
+        ],
+        "lost": [
+          "isolated hardware-cycle attribution"
+        ],
+        "remainder": [
+          "independent external author or Prolog oracle absent"
+        ]
+      },
+      {
+        "from": "typed raw measurements",
+        "to": "bounded evidence interpretation",
+        "preserved": [
+          "frozen source SHA",
+          "matched program SHA256",
+          "no interpreter changes"
+        ],
+        "transformed": [
+          "measurements and interpretation"
+        ],
+        "lost": [
+          "isolated hardware-cycle attribution"
+        ],
+        "remainder": [
+          "independent external author or Prolog oracle absent"
+        ]
+      },
+      {
+        "from": "bounded evidence interpretation",
+        "to": "research requirement",
+        "preserved": [
+          "frozen source SHA",
+          "matched program SHA256",
+          "no interpreter changes"
+        ],
+        "transformed": [
+          "measurements and interpretation"
+        ],
+        "lost": [
+          "isolated hardware-cycle attribution"
+        ],
+        "remainder": [
+          "independent external author or Prolog oracle absent"
+        ]
+      }
+    ]
+  },
+  "result": {
+    "observed": "Both native ABIs pass 7 timing cells and 264 strict differential cases. ELF64 Valgrind 3.22.0 passes 6 cells. First-fail T2/R128 ratios: native ELF64 9.985680 and i686 8.940340, DHAT ELF64 blocks 6.240490 and bytes 10.257140, Callgrind ELF64 Ir 7.100523.",
+    "effect_size": "Gen19/Gen18 native solve time 9.986x ELF64 and 8.940x i686; whole-process DHAT blocks 6.240x, bytes 10.257x, Callgrind Ir 7.101x ELF64.",
+    "uncertainty": "Five paired native blocks, one external instrument sample per case/mode/version. Workloads, harness and interpretation are project-authored; external tool implementation independent, not independently reproduced scientific result.",
+    "status_after": "M",
+    "retired_claims": [
+      "Gen19 two-clause eager-owned optimization",
+      "Callgrind Ir interpreted as hardware CPU cycles or DHAT totals as solve-only allocated bytes"
+    ],
+    "active_remainder": [
+      "Independent third-party author and semantic reference implementation",
+      "Callsite-level attribution of native time",
+      "External performance on real workloads"
+    ]
+  }
+}
