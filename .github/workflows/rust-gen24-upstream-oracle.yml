@@ -92,6 +92,13 @@ jobs:
             --baseline /tmp/gen24-rust18-cli \
             --candidate /tmp/gen24-rust19-cli \
             --abi elf64 --output "$PWD/gen24-historical-elf64.json"
+      - name: Verify final-head SWI witness, fixed caps and audit provenance
+        run: |
+          set -euo pipefail
+          python3 -m py_compile tests/rust_upstream_corpus/validate_provenance.py
+          python3 tests/rust_upstream_corpus/validate_provenance.py \
+            --data "$PWD/gen24-swi-semantic-elf64.json" \
+            --historical "$PWD/gen24-historical-elf64.json"
       - name: Upload successful and negative provenance raw files
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -103,5 +110,8 @@ jobs:
             tests/rust_upstream_corpus/upstream/likes.pl
             tests/rust_upstream_corpus/upstream/README.md
             docs/RUST_GEN24_UPSTREAM_ORACLE_PROTOCOL.md
+            docs/RUST_GEN24_UPSTREAM_ORACLE_CORRECTIONS.md
+            docs/RUST_GEN24_UPSTREAM_ORACLE_RESULTS.md
+            docs/RUST_GEN24_UPSTREAM_ORACLE_MANIFEST.json
           retention-days: 30
           if-no-files-found: warn

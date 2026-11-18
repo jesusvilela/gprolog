@@ -1,0 +1,274 @@
+{
+  "task_id": "gprolog-gen24-upstream-swi-live-oracle-2026-11-18",
+  "claim": {
+    "text": "On one genuinely upstream-authored public-domain Prolog program, the unmodified file is rejected by the Rust lexer's lack of block comments, whereas a one-comment-only normalized derivative reproduces twelve live SWI-Prolog ordered results in both frozen Rust engines.",
+    "scope": "SWI-Prolog/swipl-devel/demo/likes.pl pinned to 111385b9, 12 atom-only queries on native ELF64; original source unchanged; Gen18/Gen19 source SHAs immutable.",
+    "status_before": "H",
+    "assumptions": [
+      "The original file and demo README are byte-identical to pinned upstream Git blobs",
+      "Deleting the one source documentation block does not alter Prolog clauses or fact order",
+      "The SWI output translator only accepts a flat ordered list of lowercase atoms",
+      "Actual SWI 9.0.4 and Rust 1.85.1 perform only the bounded tests"
+    ],
+    "forbidden_promotions": [
+      "Do not label the unmodified original as Rust-supported",
+      "Do not infer full ISO/GNU Prolog conformance or native performance",
+      "Do not call the comment-only derived program independently unmodified",
+      "Do not treat project-authored query selection and translation as independent experimental authorship"
+    ]
+  },
+  "specification": {
+    "intended_object": "Pinned original upstream source with explicit syntax support classification and live independent SWI-Prolog reference, compared to two immutable Rust subset CLIs after one disclosed comment removal.",
+    "invariants": [
+      "Git blob SHA1 original likes.pl and upstream public-domain README exact",
+      "Exactly one /** <examples> ... */ comment removed; original bytes retained",
+      "Unmodified original rust parse error at byte 440, exit 2 on both versions",
+      "12 reference cases exact SWI-to-Rust ordered outputs, stderr and exit",
+      "Historical strict 264-case Rust CLI differential",
+      "Final-head fixed Rust max-solutions 32 and max-steps 100000 for all 12 queries"
+    ],
+    "known_answer_cases": [
+      "SWI likes(sam,Food) yields nine ordered foods",
+      "SWI likes(sam,curry) and unknown yield no solutions",
+      "SWI Indian/mild/Chinese/Italian enumerations",
+      "Rust original parser unsupported block-comment byte"
+    ]
+  },
+  "implementation": {
+    "artifact": "tests/rust_upstream_corpus/upstream/likes.pl and README.md; compare_swi.py; validate_provenance.py; rust-gen24-upstream-oracle.yml",
+    "commit": "upstream 111385b90852dade2b772d074cc55fefa20ee1a9; released Rust 901c8b58c12fbe8b79f70b0118f951f3ed2fcf21; retired Rust c09fff05d9b3dd43fb90014278e3a98d701d3640",
+    "environment": "Ubuntu 24.04 ELF64; SWI-Prolog 9.0.4 system interpreter; Rust 1.85.1 release feature disabled; Python 3 standard library",
+    "live_entrypoint": "Original source loaded into external swipl -f none -s likes.pl; findall/3+write_canonical/1; Rust gprolog-rs CLI accepts strictly comment-normalized temporary file",
+    "representation": "Original 922-byte file, normalized 797-byte derivative; plain-atom ordered binding stdout, negative parser stderr and exit code"
+  },
+  "metric": {
+    "name": "Typed per-query SWI/Rust ordered answer parity, status and original-file parser compatibility",
+    "type": "typed_tuple",
+    "units": "12 exact ordered answer vectors, status/stderr equality, one original parser incompatibility, 264 historical comparison flags",
+    "direction": "partial_order",
+    "raw_before_clipping": true,
+    "semantic_invariance_claimed": false,
+    "equivalence_attacks": [
+      "Raw upstream file with documentation block versus comment-normalized derivative",
+      "Positive and negative ground likes/2 queries",
+      "Ordered enumerated foods versus individual ground cases",
+      "Two frozen Rust engines against live SWI output"
+    ]
+  },
+  "tests": {
+    "black_box": [
+      "Live external SWI-Prolog evaluation on exact original source for 12 frozen queries",
+      "Each Rust version's normalized derivative CLI output compared exactly with SWI converted plain atoms",
+      "264 strict full stdout/stderr/exit historical Rust CLI differential"
+    ],
+    "structural": [
+      "Git SHA-1 upstream source and README license verified before normalization",
+      "One and only one doc block removed and preserved as SHA256",
+      "Original Rust parse failure classified at byte 440 for both versions",
+      "SWI version and source SHA256 recorded"
+    ],
+    "property_based": [
+      "not applicable: fixed one-source externally authored compatibility case, not randomized population"
+    ],
+    "metamorphic": [
+      "Comment removed without changing clause tokens",
+      "positive vs negative ground query and full enumeration",
+      "two Rust implementations same ordered results"
+    ],
+    "fuzzing": [
+      "not applicable: inherited 264-case regression corpus only, not new independent fuzzing"
+    ],
+    "historical": [
+      "Gen18 and retired Gen19 source trees are pinned immutable",
+      "Gen23 prior 12 external relation but author-reconstructed workload claims are kept separate"
+    ]
+  },
+  "controls": {
+    "matched_baselines": [
+      "Original upstream file executed by independent SWI engine",
+      "Comment-normalized derivative executed by released Gen18 and rejected Gen19 CLIs"
+    ],
+    "negative_controls": [
+      "Unmodified original fails parser due slash at byte 440",
+      "likes(sam,curry) and likes(sam,unknown) false",
+      "Ground true cases across three recipe branches and chips fact"
+    ],
+    "compute_parity": "Both Rust versions built with same Rust 1.85.1 release flags and ELF64. SWI is not timed nor a performance peer.",
+    "parameter_parity": "Same fixed queries, 32 max solutions, 100000 max steps for each Rust variant.",
+    "sampling_parity": "One execution per query and version in CI, plus 264 historical differential; not an inferential runtime sample.",
+    "data_access_parity": "SWI consumes untouched Git-pinned original; Rust consumes only temporary comment-stripped derivative with SHA256 identity; semantic clause sequence preserved by assumption and byte-level transform."
+  },
+  "preregistration": {
+    "prediction": "Original source must fail Rust parsing at one unsupported block comment; one comment-only removal yields programs with 12 SWI matching ordered answers across both frozen Rust versions.",
+    "primary_metric": "Full 12-query ordered result/status vector plus original parser rejection and exact source preservation; no execution-time metric.",
+    "uncertainty_method": "Deterministic replay once per query/version; limited single source program, interpreter and machine; no confidence intervals or general workloads.",
+    "kill_condition": "Missing source hash/licensing, unexpected normalized edits, original accepted unexpectedly, SWI missing or error, unsupported SWI term type, any Rust/SWI mismatch or 264-case regression.",
+    "stop_condition": "No clause rewrites, parser feature additions or ownership optimization to rescue unsupported syntax or semantic mismatch in this experiment.",
+    "promotion_rule": "M only for the bounded external-source comment-compatibility and 12 ordered semantic comparisons after exact-head independent SWI evidence and controls pass."
+  },
+  "evidence": {
+    "primary_sources": [
+      "https://github.com/SWI-Prolog/swipl-devel/blob/111385b90852dade2b772d074cc55fefa20ee1a9/demo/likes.pl",
+      "https://github.com/SWI-Prolog/swipl-devel/blob/111385b90852dade2b772d074cc55fefa20ee1a9/demo/README.md",
+      "https://www.swi-prolog.org/pldoc/man?predicate=write_canonical%2F1"
+    ],
+    "execution_records": [
+      "https://github.com/jesusvilela/gprolog/actions/runs/44367811617",
+      "Gen24 raw ELF64 artifact 14458935879",
+      "The initial run used a reference-derived solution cap; the final-head fixed-32 cap correction must pass before merge"
+    ],
+    "independent_witnesses": [
+      {
+        "name": "SWI-Prolog 9.0.4 live interpreter",
+        "origin": "independently developed Prolog implementation; original third-party program rather than reconstructed author source",
+        "artifact": "Gen24 original-file SWI raw reference outputs in artifact 14458935879"
+      }
+    ],
+    "claim_to_artifact_map": [
+      "Original support boundary -> untouched likes.pl Git blob + exact syntax byte stderr for both Rust CLIs",
+      "Semantic agreement -> 12 SWI findall canonical outputs and full Rust CLI output per role",
+      "Source transformation scope -> 922-byte SHA256 and 797-byte derivative SHA256 with 125-byte removed documentation block",
+      "Historical regression -> Gen24 264-case exact Rust CLI differential JSON",
+      "Fixed final resource bound -> validate_provenance.py checking --max-solutions 32 and --max-steps 100000"
+    ]
+  },
+  "round_trip": {
+    "edges": [
+      {
+        "from": "original public-domain Prolog program and narrow question",
+        "to": "frozen source bytes and declared unsupported syntax",
+        "preserved": [
+          "Git-pinned source and public-domain notice",
+          "same facts and rules outside removed comment",
+          "typed evidence not elapsed-time generalization"
+        ],
+        "transformed": [
+          "one explicit comment-only normalization",
+          "SWI canonical list translated to Rust atom-binding output"
+        ],
+        "lost": [
+          "original source directly parseable by Rust is false",
+          "full Prolog language and resource representation"
+        ],
+        "remainder": [
+          "No broad external corpus, no native comment lexer support, no independent study of performance"
+        ]
+      },
+      {
+        "from": "frozen source bytes and declared unsupported syntax",
+        "to": "comment-only derivative and independent SWI execution",
+        "preserved": [
+          "Git-pinned source and public-domain notice",
+          "same facts and rules outside removed comment",
+          "typed evidence not elapsed-time generalization"
+        ],
+        "transformed": [
+          "one explicit comment-only normalization",
+          "SWI canonical list translated to Rust atom-binding output"
+        ],
+        "lost": [
+          "original source directly parseable by Rust is false",
+          "full Prolog language and resource representation"
+        ],
+        "remainder": [
+          "No broad external corpus, no native comment lexer support, no independent study of performance"
+        ]
+      },
+      {
+        "from": "comment-only derivative and independent SWI execution",
+        "to": "frozen Gen18/retired Gen19 CLI + reference output translator",
+        "preserved": [
+          "Git-pinned source and public-domain notice",
+          "same facts and rules outside removed comment",
+          "typed evidence not elapsed-time generalization"
+        ],
+        "transformed": [
+          "one explicit comment-only normalization",
+          "SWI canonical list translated to Rust atom-binding output"
+        ],
+        "lost": [
+          "original source directly parseable by Rust is false",
+          "full Prolog language and resource representation"
+        ],
+        "remainder": [
+          "No broad external corpus, no native comment lexer support, no independent study of performance"
+        ]
+      },
+      {
+        "from": "frozen Gen18/retired Gen19 CLI + reference output translator",
+        "to": "raw ordered results and historical regression checks",
+        "preserved": [
+          "Git-pinned source and public-domain notice",
+          "same facts and rules outside removed comment",
+          "typed evidence not elapsed-time generalization"
+        ],
+        "transformed": [
+          "one explicit comment-only normalization",
+          "SWI canonical list translated to Rust atom-binding output"
+        ],
+        "lost": [
+          "original source directly parseable by Rust is false",
+          "full Prolog language and resource representation"
+        ],
+        "remainder": [
+          "No broad external corpus, no native comment lexer support, no independent study of performance"
+        ]
+      },
+      {
+        "from": "raw ordered results and historical regression checks",
+        "to": "bounded compatibility interpretation",
+        "preserved": [
+          "Git-pinned source and public-domain notice",
+          "same facts and rules outside removed comment",
+          "typed evidence not elapsed-time generalization"
+        ],
+        "transformed": [
+          "one explicit comment-only normalization",
+          "SWI canonical list translated to Rust atom-binding output"
+        ],
+        "lost": [
+          "original source directly parseable by Rust is false",
+          "full Prolog language and resource representation"
+        ],
+        "remainder": [
+          "No broad external corpus, no native comment lexer support, no independent study of performance"
+        ]
+      },
+      {
+        "from": "bounded compatibility interpretation",
+        "to": "original public-domain Prolog program and narrow question",
+        "preserved": [
+          "Git-pinned source and public-domain notice",
+          "same facts and rules outside removed comment",
+          "typed evidence not elapsed-time generalization"
+        ],
+        "transformed": [
+          "one explicit comment-only normalization",
+          "SWI canonical list translated to Rust atom-binding output"
+        ],
+        "lost": [
+          "original source directly parseable by Rust is false",
+          "full Prolog language and resource representation"
+        ],
+        "remainder": [
+          "No broad external corpus, no native comment lexer support, no independent study of performance"
+        ]
+      }
+    ]
+  },
+  "result": {
+    "observed": "Initial run 44367811617: pinned upstream source rejected by both Rust lexers at byte 440 (0x2f), and comment-normalized derivative matched 12/12 live SWI-Prolog 9.0.4 ordered outputs on both frozen Rust CLIs; 264 historical Rust full-output comparisons passed. Final fixed-cap reproduction must be verified.",
+    "effect_size": "12/12 correct ordered SWI/Gen18 and SWI/Gen19 comparisons, 1 explicitly identified source lexer incompatibility, 264/264 historical regressions.",
+    "uncertainty": "Only a single public-domain teaching file and 12 project-selected queries, SWI is an independent engine but the experiment itself is project-authored; original is not directly supported and only a comment-normalized derivative is executed on Rust.",
+    "status_after": "M",
+    "retired_claims": [
+      "Description of project-reconstructed Gen23 fixtures as independently authored programs",
+      "Equating a successful derived-source comparison to unmodified upstream compatibility"
+    ],
+    "active_remainder": [
+      "Portability of parser source comments",
+      "Additional unmodified upstream workloads with wider syntax",
+      "Independent full ISO Prolog conformance and representative benchmarks"
+    ]
+  }
+}

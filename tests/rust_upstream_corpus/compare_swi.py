@@ -232,7 +232,7 @@ def main():
                 }
                 for role, exe in (("gen18", args.gen18), ("gen19", args.gen19)):
                     rust = invoke([exe.resolve(), derivative, case.query,
-                                   "--max-solutions", str(max(1, len(atoms)+2)),
+                                   "--max-solutions", "32",
                                    "--max-steps", "100000"])
                     record["engines"][role] = rust
                     if (rust["exit"], rust["stdout"], rust["stderr"]) != (0, expected, ""):
