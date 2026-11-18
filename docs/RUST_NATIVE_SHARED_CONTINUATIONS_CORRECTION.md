@@ -23,3 +23,20 @@ preimplementation correction to its contradictory numeric predictions.
 Any report must cite this corrected ledger alongside the protocol.
 No implementation or benchmark code existed on the branch before
 this correction was committed.
+
+## 18 November 2026 — first profiled CI regression test correction
+
+The first ELF64 [Gen17 comparison workflow](https://github.com/jesusvilela/gprolog/actions/runs/44277284174)
+failed in `analytic_sparse_first_solution_counts` **after all default
+Rust tests passed**. The assertion demanded 2,016 copied continuation
+elements for the T=1/R=64 test, even though the explicitly frozen owned
+single-clause path has no alternative choicepoint and no continuation
+Vec copies: the correct expected count is **zero**. That was an error
+in the new **test prediction**, not a newly observed solver runtime
+failure. The corrected assertion now distinguishes T=1 from T>1;
+the script's separately written expected-counter function already did.
+
+No performance measurement was reached in that failing job, and it
+cannot be used as evidence for any benchmark outcome. Do not erase
+the failed workflow from the audit trail. The exact corrected-head
+retest is required before interpreting results.
