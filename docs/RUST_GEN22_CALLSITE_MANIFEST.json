@@ -1,0 +1,254 @@
+{
+  "task_id": "gen22-gprolog-signed-symbol-attribution-20261118",
+  "claim": {
+    "text": "Symbolized first-Rust-frame DHAT groups Term::clone and engine::solve account for >=95% of net extra bytes, Term::clone >=90% of net extra blocks, and six libc heap functions >=65% of extra Callgrind Ir for a failed-first-head two-clause R128 comparison.",
+    "scope": "Two Valgrind 3.22.0 ELF64 artifacts of identical synthetic Gen18 vs retired Gen19 workloads; first run exploratory, second same-workload held-out execution.",
+    "status_before": "H",
+    "assumptions": [
+      "DHAT v2 allocation site tables and human Total log refer to the same process",
+      "Callgrind Ir entries are fully captured by exclusive function cost rows",
+      "Symbolized first project Rust frame is a heuristic grouping, not a unique source line",
+      "The held-out run uses an identical compiler and synthetic workloads"
+    ],
+    "forbidden_promotions": [
+      "No independent experimental authorship or independent semantic oracle",
+      "No hardware cycles or native walltime attributed to named symbols",
+      "No generalization to unseen Prolog programs",
+      "Do not reinterpret the exploratory run as prospectively preregistered"
+    ]
+  },
+  "specification": {
+    "intended_object": "Read-only mapping of two immutable raw Valgrind artifacts into typed, signed per-group heap and instruction deltas.",
+    "invariants": [
+      "Every DHAT site's bytes and blocks sum to independent log Total",
+      "Every Callgrind function-exclusive Ir sum equals reported summary",
+      "Preserve signed differences and unknown symbol groups",
+      "Controls within frozen 0.9 to 1.1 ratio interval",
+      "Gen18/Gen19 solver sources unchanged"
+    ],
+    "known_answer_cases": [
+      "Exploratory DHAT +897128 bytes and +24384 blocks",
+      "Exploratory Ir +11619544",
+      "Held-out first_failure_r128 thresholds",
+      "T2 first-success, T3, T1 and builtin controls"
+    ]
+  },
+  "implementation": {
+    "artifact": "tests/rust_external_profile/analyze_callsite.py; docs/RUST_GEN22_CALLSITE_PROTOCOL.md; docs/RUST_GEN22_ATTRIBUTION_RESULTS.json",
+    "commit": "Gen18 901c8b58c12fbe8b79f70b0118f951f3ed2fcf21 vs Gen19 c09fff05d9b3dd43fb90014278e3a98d701d3640",
+    "environment": "Python 3 standard library interpreting immutable Valgrind 3.22.0 ELF64 DHAT v2 JSON/log and Callgrind text; no runtime engine edits.",
+    "live_entrypoint": "Offline `inspect(archive, heldout=True)` -> `parse_dhat`, `parse_callgrind`, signed grouped deltas and frozen gates.",
+    "representation": "Typed mapping of original bytes, blocks, simulated instruction references, program/process archive hashes and signed group deltas."
+  },
+  "metric": {
+    "name": "Signed DHAT group delta bytes/blocks and exclusive Callgrind Ir contribution share",
+    "type": "typed_tuple",
+    "units": "DHAT whole-process allocated bytes, heap blocks, Callgrind simulator-counted instruction references",
+    "direction": "partial_order",
+    "raw_before_clipping": true,
+    "semantic_invariance_claimed": false,
+    "equivalence_attacks": [
+      "Replace first successful same-signature head by failing head",
+      "Compare T2 first success with same predicate cardinality",
+      "T1/T3/builtin controls under the unchanged ownership branch",
+      "Different process IDs and PC addresses normalized by symbol label"
+    ]
+  },
+  "tests": {
+    "black_box": [
+      "Six fixed matching primary/control cases in original and held-out artifacts",
+      "Inherited Generation21 264 strict CLI cases per ABI, not rerun here"
+    ],
+    "structural": [
+      "DHAT per-site allocation count reconciliation to human tool Total",
+      "Callgrind exclusive cost reconciliation to summary",
+      "SHA256 provenance of both original artifact ZIPs",
+      "Exact frozen symbol-list and ratio thresholds"
+    ],
+    "property_based": [
+      "Not applicable: only immutable historical profiler dumps were available"
+    ],
+    "metamorphic": [
+      "First-failed vs first-success source reorder",
+      "Differing raw address mapping with same symbolic identity",
+      "T1/T3/builtin no-difference path controls"
+    ],
+    "fuzzing": [
+      "Not applicable: parser synthetic known-answer and malformed-input tests instead"
+    ],
+    "historical": [
+      "Generation21 native timing 9.99× ELF64 / 8.94× i686 and Valgrind aggregate ratios",
+      "Generation20 traced GlobalAlloc and continuation-copy predictions"
+    ]
+  },
+  "controls": {
+    "matched_baselines": [
+      "Pinned Gen18 and Gen19 same-workload symbolized Valgrind profiles on ELF64",
+      "Same normalizer for both versions and both runs"
+    ],
+    "negative_controls": [
+      "T2 first success R128",
+      "T3 first success R64",
+      "T1 R128 and builtin true/0 R128",
+      "Malformed DHAT log and Callgrind summary unit negatives"
+    ],
+    "compute_parity": "The experiment reinterprets immutable raw traces; both versions previously compiled and measured on same runner target; no new profiling resources.",
+    "parameter_parity": "The two artifacts reuse the identical fixed query, clause order, repeat counts and solution limits per case.",
+    "sampling_parity": "One process per profiler tool/mode/version/case in each of the two runs; a same-workload repeat, not new statistical population.",
+    "data_access_parity": "Original and held-out archive IDs and SHA256 fixed before normalized source-symbol analysis promotion."
+  },
+  "preregistration": {
+    "prediction": "After exploratory run, frozen before held-out inspection: T2 first-fail R128 >=95% net extra DHAT bytes from Term::clone+engine::solve; >=90% net blocks from Term::clone; >=65% net extra Ir from six fixed libc names; all four unchanged-path controls 0.9 to 1.1.",
+    "primary_metric": "Typed region of signed source-symbol DHAT and Callgrind attribution shares with exact raw-sum and negative-control gates.",
+    "uncertainty_method": "Same-workload held-out instrument run; no independent workload, bootstrap confidence interval or independent author. All signed groups retained.",
+    "kill_condition": "Any missing source artifact or frame, failed DHAT/log or Callgrind summary reconciliation, unexpected control ratio, unstable label mapping, or held-out threshold miss.",
+    "stop_condition": "Do not reclassify signs or tune grouping/thresholds after held-out run; do not introduce a new solver optimization.",
+    "promotion_rule": "M only for narrowly reproducible symbol-grouped process-wide metrics; native CPU causality and external generalization stay H."
+  },
+  "evidence": {
+    "primary_sources": [
+      "Original Generation21 Valgrind artifact 14427545662 from run 44302879486",
+      "Held-out same-workload artifact 14427846479 from run 44305428250",
+      "Valgrind DHAT and Callgrind tool specifications"
+    ],
+    "execution_records": [
+      "Original zip SHA256 21efbf87d2afb2c6781decb2b018dc063d2f90edbe59c5a5690c600a3e2416d0",
+      "Held-out zip SHA256 289b36d06c827428b5f1a865d5011f7ef8e18ef33736f86217fd9dd4f744a9fd",
+      "docs/RUST_GEN22_ATTRIBUTION_RESULTS.json"
+    ],
+    "independent_witnesses": [],
+    "claim_to_artifact_map": [
+      "897128 byte delta -> original and held-out DHAT full tables/log",
+      "Term/solve net symbol contributions -> normalized first project Rust frame per allocation site",
+      "Exact 11,619,544 Ir delta -> exclusive function-cost parser reconciled against Callgrind summary",
+      "Control region -> four fixed negative controls in both Valgrind archives"
+    ]
+  },
+  "round_trip": {
+    "edges": [
+      {
+        "from": "requirement",
+        "to": "symbolized cost model",
+        "preserved": [
+          "raw archive SHA256",
+          "signed metrics and units",
+          "immutable group rules"
+        ],
+        "transformed": [
+          "symbolized attribution and bounded explanation"
+        ],
+        "lost": [
+          "exact source allocation origin and native CPU cycles"
+        ],
+        "remainder": [
+          "independent author and real-world workloads absent"
+        ]
+      },
+      {
+        "from": "symbolized cost model",
+        "to": "DHAT/Callgrind raw representations",
+        "preserved": [
+          "raw archive SHA256",
+          "signed metrics and units",
+          "immutable group rules"
+        ],
+        "transformed": [
+          "symbolized attribution and bounded explanation"
+        ],
+        "lost": [
+          "exact source allocation origin and native CPU cycles"
+        ],
+        "remainder": [
+          "independent author and real-world workloads absent"
+        ]
+      },
+      {
+        "from": "DHAT/Callgrind raw representations",
+        "to": "offline parser and accounting checks",
+        "preserved": [
+          "raw archive SHA256",
+          "signed metrics and units",
+          "immutable group rules"
+        ],
+        "transformed": [
+          "symbolized attribution and bounded explanation"
+        ],
+        "lost": [
+          "exact source allocation origin and native CPU cycles"
+        ],
+        "remainder": [
+          "independent author and real-world workloads absent"
+        ]
+      },
+      {
+        "from": "offline parser and accounting checks",
+        "to": "exploratory and held-out measurements",
+        "preserved": [
+          "raw archive SHA256",
+          "signed metrics and units",
+          "immutable group rules"
+        ],
+        "transformed": [
+          "symbolized attribution and bounded explanation"
+        ],
+        "lost": [
+          "exact source allocation origin and native CPU cycles"
+        ],
+        "remainder": [
+          "independent author and real-world workloads absent"
+        ]
+      },
+      {
+        "from": "exploratory and held-out measurements",
+        "to": "bounded interpretation",
+        "preserved": [
+          "raw archive SHA256",
+          "signed metrics and units",
+          "immutable group rules"
+        ],
+        "transformed": [
+          "symbolized attribution and bounded explanation"
+        ],
+        "lost": [
+          "exact source allocation origin and native CPU cycles"
+        ],
+        "remainder": [
+          "independent author and real-world workloads absent"
+        ]
+      },
+      {
+        "from": "bounded interpretation",
+        "to": "requirement",
+        "preserved": [
+          "raw archive SHA256",
+          "signed metrics and units",
+          "immutable group rules"
+        ],
+        "transformed": [
+          "symbolized attribution and bounded explanation"
+        ],
+        "lost": [
+          "exact source allocation origin and native CPU cycles"
+        ],
+        "remainder": [
+          "independent author and real-world workloads absent"
+        ]
+      }
+    ]
+  },
+  "result": {
+    "observed": "Held-out run reproduces +897128 DHAT bytes and +24384 DHAT blocks; net extra bytes attributed to Term::clone +447040 and engine::solve +450088; all extra blocks to Term::clone; six libc names +8579808 / +11619544 Callgrind Ir. All unchanged-path controls passed.",
+    "effect_size": "Typed attribution-share tuple: 100% of net DHAT allocated bytes in two Rust symbolized sites; 100% of net DHAT blocks in Term::clone; 73.8394553177% of net Callgrind Ir in six heap-management functions.",
+    "uncertainty": "Symbol names/stack truncation and inlining shape the attribution; identical workloads and independent profiling software but no independently authored study or ISO semantic witness. No hardware-cycle attribution.",
+    "status_after": "M",
+    "retired_claims": [
+      "Gen19 fixed two-clause eager-owned optimization",
+      "Interpreting DHAT/Callgrind symbol groups as native CPU-time causality"
+    ],
+    "active_remainder": [
+      "Unseen real-program workloads and input distributions",
+      "Independent reference/oracle and other compiler/allocator configurations",
+      "Source-line exactness and unsymbolized frame ambiguity"
+    ]
+  }
+}
