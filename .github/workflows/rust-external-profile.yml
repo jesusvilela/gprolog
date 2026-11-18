@@ -135,6 +135,12 @@ jobs:
             --gen18 /tmp/gen21-native-18-bench \
             --gen19 /tmp/gen21-native-19-bench \
             --abi "$ABI" --output "$PWD/gen21-native-timing-$ABI.json"
+      - name: Check fresh native measurements against frozen evidence identities
+        env:
+          ABI: ${{ matrix.abi }}
+        run: |
+          set -euo pipefail
+          python3 tests/rust_external_profile/validate_provenance.py             --lane native --abi "$ABI"             --data "$PWD/gen21-native-timing-$ABI.json"
       - name: Retain failed and successful raw evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -144,6 +150,9 @@ jobs:
             gen21-native-semantic-${{ matrix.abi }}.json
             gen21-native-timing-${{ matrix.abi }}.json
             docs/RUST_GEN21_EXTERNAL_PROFILE_PROTOCOL.md
+            docs/RUST_GEN21_EXTERNAL_PROFILE_MANIFEST.json
+            docs/RUST_GEN21_EXTERNAL_PROFILE_RESULTS.md
+            tests/rust_external_profile/results/gen21_native_summary.csv
           retention-days: 30
           if-no-files-found: warn
 
@@ -221,6 +230,10 @@ jobs:
             --gen19 /tmp/gen21-ext-19-profile \
             --output "$PWD/gen21-external-elf64.json" \
             --raw-dir "$PWD/gen21-raw-elf64"
+      - name: Check fresh third-party measurements against frozen evidence identities
+        run: |
+          set -euo pipefail
+          python3 tests/rust_external_profile/validate_provenance.py             --lane external --abi elf64             --data "$PWD/gen21-external-elf64.json"
       - name: Preserve third-party raw heap and instruction profiles even after failure
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -230,5 +243,8 @@ jobs:
             gen21-external-elf64.json
             gen21-raw-elf64/**
             docs/RUST_GEN21_EXTERNAL_PROFILE_PROTOCOL.md
+            docs/RUST_GEN21_EXTERNAL_PROFILE_MANIFEST.json
+            docs/RUST_GEN21_EXTERNAL_PROFILE_RESULTS.md
+            tests/rust_external_profile/results/gen21_valgrind_summary.csv
           retention-days: 30
           if-no-files-found: warn
