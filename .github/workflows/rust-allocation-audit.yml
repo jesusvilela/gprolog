@@ -90,7 +90,7 @@ jobs:
         run: |
           set -euo pipefail
           for gen in 18 19; do
-            CARGO_TARGET_DIR="/tmp/alloc-gen${gen}-target" \
+            CARGO_TARGET_DIR="/tmp/alloc-gen${gen}-tests-target" \
             cargo +1.85.1 test --release \
               --manifest-path "/tmp/alloc-gen${gen}/Cargo.toml" \
               --target "$TARGET" --features choicepoint-profile --all-targets
@@ -109,6 +109,8 @@ jobs:
             d="/tmp/alloc-gen${gen}-target/$TARGET/release/deps"
             shopt -s nullglob
             libs=("$d"/libgprolog_native-*.rlib)
+            echo "Found ${#libs[@]} candidate rlibs in $d"
+            printf "  %s\n" "${libs[@]}"
             if [ "${#libs[@]}" -ne 1 ]; then
               echo "Expected exactly one Rust feature-enabled release rlib at $d" >&2
               exit 1
