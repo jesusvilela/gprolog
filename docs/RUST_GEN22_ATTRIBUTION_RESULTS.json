@@ -1,0 +1,148 @@
+{
+  "experiment": "Gen22 symbolic call-site offline audit of immutable Gen21 Valgrind outputs",
+  "provenance": {
+    "interpretation": "exploratory primary artifact; one same-workload held-out CI replicate; not an independent study",
+    "exploratory": {
+      "run": 44302879486,
+      "artifact_id": 14427545662,
+      "archive_sha256": "21efbf87d2afb2c6781decb2b018dc063d2f90edbe59c5a5690c600a3e2416d0"
+    },
+    "heldout": {
+      "run": 44305428250,
+      "artifact_id": 14427846479,
+      "archive_sha256": "289b36d06c827428b5f1a865d5011f7ef8e18ef33736f86217fd9dd4f744a9fd"
+    },
+    "sources": {
+      "released_gen18": "901c8b58c12fbe8b79f70b0118f951f3ed2fcf21",
+      "retired_gen19": "c09fff05d9b3dd43fb90014278e3a98d701d3640"
+    },
+    "instrument": "Valgrind 3.22.0 DHAT heap and Callgrind Ir on ELF64, process-wide"
+  },
+  "primary": {
+    "case": "first_failure_r128",
+    "exploratory": {
+      "gen18": {
+        "dhat_bytes": 96912,
+        "dhat_blocks": 4653,
+        "callgrind_Ir": 1904680
+      },
+      "gen19": {
+        "dhat_bytes": 994040,
+        "dhat_blocks": 29037,
+        "callgrind_Ir": 13524224
+      }
+    },
+    "heldout": {
+      "gen18": {
+        "dhat_bytes": 96912,
+        "dhat_blocks": 4653,
+        "callgrind_Ir": 1905347
+      },
+      "gen19": {
+        "dhat_bytes": 994040,
+        "dhat_blocks": 29037,
+        "callgrind_Ir": 13524891
+      }
+    },
+    "signed_deltas": {
+      "dhat_bytes": 897128,
+      "dhat_blocks": 24384,
+      "callgrind_Ir": 11619544
+    },
+    "normalized_first_rust_frame_net_byte_deltas": {
+      "<gprolog_native::syntax::Term as core::clone::Clone>::clone": 447040,
+      "gprolog_native::engine::solve": 450088,
+      "all_other_groups_net": 0
+    },
+    "normalized_first_rust_frame_net_block_deltas": {
+      "<gprolog_native::syntax::Term as core::clone::Clone>::clone": 24384,
+      "gprolog_native::engine::solve": 0,
+      "all_other_groups_net": 0
+    },
+    "predeclared_six_libc_function_Ir_delta": {
+      "_int_malloc": 3344075,
+      "_int_free": 1809247,
+      "malloc_consolidate": 1207331,
+      "malloc": 1082461,
+      "free": 755904,
+      "unlink_chunk.isra.0": 380790
+    },
+    "predefined_shares": {
+      "first_two_rust_symbol_groups_of_net_extra_dhat_bytes": 1,
+      "term_clone_symbol_group_of_net_extra_dhat_blocks": 1,
+      "six_libc_symbols_of_net_extra_callgrind_Ir": 0.7383945531769577
+    }
+  },
+  "controls": {
+    "first_success_r128": {
+      "gen18": {
+        "bytes": 1001552,
+        "blocks": 27761,
+        "Ir_exploration": 11610826,
+        "Ir_heldout": 11611493
+      },
+      "gen19": {
+        "bytes": 996472,
+        "blocks": 27634,
+        "Ir_exploration": 11631131,
+        "Ir_heldout": 11631798
+      }
+    },
+    "t3_first_success_r64": {
+      "gen18": {
+        "bytes": 292490,
+        "blocks": 7958,
+        "Ir_exploration": 3535691,
+        "Ir_heldout": 3536330
+      },
+      "gen19": {
+        "bytes": 292490,
+        "blocks": 7958,
+        "Ir_exploration": 3535247,
+        "Ir_heldout": 3535886
+      }
+    },
+    "t1_r128": {
+      "gen18": {
+        "bytes": 62164,
+        "blocks": 2727,
+        "Ir_exploration": 1333441,
+        "Ir_heldout": 1334084
+      },
+      "gen19": {
+        "bytes": 62164,
+        "blocks": 2727,
+        "Ir_exploration": 1333955,
+        "Ir_heldout": 1334598
+      }
+    },
+    "builtin_r128": {
+      "gen18": {
+        "bytes": 18817,
+        "blocks": 409,
+        "Ir_exploration": 534594,
+        "Ir_heldout": 535237
+      },
+      "gen19": {
+        "bytes": 18817,
+        "blocks": 409,
+        "Ir_exploration": 534721,
+        "Ir_heldout": 535364
+      }
+    }
+  },
+  "declared_gates": {
+    "dhat_two_symbols_min_share": 0.95,
+    "dhat_term_blocks_min_share": 0.9,
+    "callgrind_libc_min_share": 0.65,
+    "control_ratios_min": 0.9,
+    "control_ratios_max": 1.1
+  },
+  "result": {
+    "exploration_passed": true,
+    "heldout_passed": true,
+    "semantic_oracle": "inherited Generation21 264-case parity per ABI; not rerun",
+    "status": "M for bounded symbol grouping; H for hardware-cycle or unique root-cause attribution",
+    "independent_authored_replication": false
+  }
+}
