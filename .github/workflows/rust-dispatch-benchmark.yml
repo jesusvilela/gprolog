@@ -83,7 +83,7 @@ jobs:
             fi
             linker=()
             if [ "$ABI" = elf32 ]; then linker=(-C linker=/tmp/gcc-i686); fi
-            rustc +1.85.1 --edition=2021 -C opt-level=3 --target "$TARGET" \
+            rustc +1.85.1 --edition=2021 -C opt-level=3 -C panic=abort --target "$TARGET" \
               "${linker[@]}" -L "dependency=$directory" \
               --extern "gprolog_native=${libs[0]}" \
               tests/rust_dispatch/bench_solve.rs -o "/tmp/g${version}-bench"
