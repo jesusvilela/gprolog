@@ -9,6 +9,8 @@ on:
       - 'tests/rust_choicepoint/**'
       - '.github/workflows/rust-reversed-goal-stack.yml'
       - 'docs/RUST_NATIVE_REVERSED_GOAL_STACK_PROTOCOL.md'
+      - 'docs/RUST_NATIVE_REVERSED_GOAL_STACK_RESULTS.md'
+      - 'docs/RUST_NATIVE_REVERSED_GOAL_STACK_CORRECTION.md'
   pull_request:
     paths:
       - 'rust/gprolog-native/**'
@@ -16,6 +18,8 @@ on:
       - 'tests/rust_choicepoint/**'
       - '.github/workflows/rust-reversed-goal-stack.yml'
       - 'docs/RUST_NATIVE_REVERSED_GOAL_STACK_PROTOCOL.md'
+      - 'docs/RUST_NATIVE_REVERSED_GOAL_STACK_RESULTS.md'
+      - 'docs/RUST_NATIVE_REVERSED_GOAL_STACK_CORRECTION.md'
   workflow_dispatch:
 
 permissions:
@@ -40,6 +44,22 @@ jobs:
         with:
           fetch-depth: 60
           persist-credentials: false
+      - name: Verify PR merge ref and source-head tree identity
+        env:
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          current="$(git rev-parse HEAD)"
+          current_tree="$(git rev-parse HEAD^{tree})"
+          if [ -n "$PR_HEAD" ]; then
+            git cat-file -e "${PR_HEAD}^{commit}"
+            expected_tree="$(git rev-parse "${PR_HEAD}^{tree}")"
+            echo "Checked-out candidate $current tree $current_tree"
+            echo "PR branch-head $PR_HEAD tree $expected_tree"
+            test "$current_tree" = "$expected_tree"
+          else
+            echo "Branch push commit $current tree $current_tree"
+          fi
       - name: Freeze reference source
         run: |
           set -euo pipefail

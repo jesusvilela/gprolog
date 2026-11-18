@@ -97,3 +97,31 @@ ELF64 and 93.18% on i686 ELF32 relative to immutable Generation 13.
 The tiny-program control regressed on i686 by 10.57%. Neither result
 generalizes to real Prolog applications. See
 [the correction and evidence ledger](../../docs/RUST_NATIVE_DISPATCH_CORRECTION.md).
+
+## Generations 16–18 — measured native Rust execution costs
+
+**Generation 16 (feature-only profiler):** the T=16 matching heads / R=64
+straight-line first-answer workload creates 960 clause alternatives and
+clones 30,240 continuation goal-elements, yet resumes none of those
+alternatives. These are logical operation counts, not heap bytes or time.
+
+**Generation 17 (shared immutable clause continuations):** an internal
+`Arc<Vec<PendingGoal>>` representation reduced actual cloned
+continuation elements in that fixed case to 2,016. Frozen Gen16→17
+ELF64/i686 solve-only timings improved roughly 89% for that case,
+though a two-clause control regressed slightly. See
+[Generation 17 results](../../docs/RUST_NATIVE_SHARED_CONTINUATIONS_RESULTS.md).
+
+**Generation 18 (reversed goal stack):** storing the remaining goal
+sequence in reverse permits `Vec::pop()` instead of rebuilding the
+suffix on every Resume step. On two preregistered R=128 workloads,
+solve-only medians fell 29.56%/28.02% (builtin, ELF64/i686) and
+29.64%/23.22% (single clause, ELF64/i686), against immutable Gen17.
+All 241 complete output differential cases per ABI passed. Smaller
+and deep-term controls improved much less, and some short i686
+controls regressed by around 3%. Full [protocol](../../docs/RUST_NATIVE_REVERSED_GOAL_STACK_PROTOCOL.md),
+[results](../../docs/RUST_NATIVE_REVERSED_GOAL_STACK_RESULTS.md) and
+[source identity correction](../../docs/RUST_NATIVE_REVERSED_GOAL_STACK_CORRECTION.md).
+
+These bounded synthetic tests do **not** establish full ISO/GNU Prolog
+language conformance, a compiled WAM or general-application speedups.
