@@ -21,7 +21,7 @@ jobs:
   native:
     name: Published relation oracle + frozen Gen18/Gen19 (${{ matrix.abi }})
     runs-on: ubuntu-24.04
-    timeout-minutes: 35
+    timeout-minutes: 50
     strategy:
       fail-fast: false
       matrix:
@@ -72,7 +72,13 @@ jobs:
           if [ "$ABI" = elf32 ]; then
             if ! dpkg -s gcc-multilib libc6-dev-i386 >/dev/null 2>&1; then
               sudo timeout 180 apt-get update -qq
-              sudo timeout 240 env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends gcc-multilib libc6-dev-i386
+              # The 32-bit libc/gcc packages may require upgrading the
+              # runner's system libc. The original 240-second bound caused
+              # an infra-only exit 124 on an unusually slow apt mirror.
+              # Keep a finite bound without changing experiment semantics.
+              sudo timeout 1200 env DEBIAN_FRONTEND=noninteractive \
+                apt-get install -y -o Acquire::Retries=3 --no-install-recommends \
+                  gcc-multilib libc6-dev-i386
             fi
             cat > /tmp/gcc-i686 <<'SH'
           #!/bin/sh
