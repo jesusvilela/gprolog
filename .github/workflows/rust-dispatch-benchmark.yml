@@ -1,0 +1,114 @@
+name: Rust-native indexed dispatch - matched Generation 13 vs 14
+
+on:
+  push:
+    branches: ['rust/native-predicate-dispatch', master]
+    paths:
+      - 'rust/gprolog-native/**'
+      - 'tests/rust_dispatch/**'
+      - '.github/workflows/rust-dispatch-benchmark.yml'
+      - 'docs/RUST_NATIVE_DISPATCH_PROTOCOL.md'
+  pull_request:
+    paths:
+      - 'rust/gprolog-native/**'
+      - 'tests/rust_dispatch/**'
+      - '.github/workflows/rust-dispatch-benchmark.yml'
+      - 'docs/RUST_NATIVE_DISPATCH_PROTOCOL.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  matched-ab:
+    name: Matched direct solve (${{ matrix.abi }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - abi: elf64
+            target: x86_64-unknown-linux-gnu
+          - abi: elf32
+            target: i686-unknown-linux-gnu
+    steps:
+      - name: Checkout candidate with frozen historical base
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 40
+          persist-credentials: false
+      - name: Materialize immutable Generation 13
+        run: |
+          set -euo pipefail
+          BASE=dd6375e3fff21026b603c7944dd617ed9b391163
+          git cat-file -e "${BASE}^{commit}"
+          git worktree add --detach /tmp/gprolog-gen13 "$BASE"
+          test "$(git -C /tmp/gprolog-gen13 rev-parse HEAD)" = "$BASE"
+          git rev-parse HEAD
+      - name: Install pinned Rust and native target
+        env:
+          TARGET: ${{ matrix.target }}
+          ABI: ${{ matrix.abi }}
+        run: |
+          set -euo pipefail
+          rustup toolchain install 1.85.1 --profile minimal
+          rustup target add "$TARGET" --toolchain 1.85.1
+          rustc +1.85.1 --version
+          if [ "$ABI" = elf32 ]; then
+            sudo apt-get update -qq
+            sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y gcc-multilib libc6-dev-i386
+            cat > /tmp/gcc-i686 <<'SH'
+          #!/bin/sh
+          exec gcc -m32 "$@"
+          SH
+            chmod +x /tmp/gcc-i686
+            echo "CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER=/tmp/gcc-i686" >> "$GITHUB_ENV"
+          fi
+      - name: Compile identical external harness against each Rust-only library
+        env:
+          TARGET: ${{ matrix.target }}
+          ABI: ${{ matrix.abi }}
+        run: |
+          set -euo pipefail
+          CARGO_TARGET_DIR=/tmp/g13-target cargo +1.85.1 build --release --target "$TARGET" --manifest-path /tmp/gprolog-gen13/Cargo.toml
+          CARGO_TARGET_DIR=/tmp/g14-target cargo +1.85.1 build --release --target "$TARGET" --manifest-path Cargo.toml
+          for version in 13 14; do
+            directory="/tmp/g${version}-target/$TARGET/release/deps"
+            shopt -s nullglob
+            libs=("$directory"/libgprolog_native-*.rlib)
+            if [ "${#libs[@]}" -ne 1 ]; then
+              echo "Expected exactly one Rust rlib in $directory" >&2
+              exit 1
+            fi
+            linker=()
+            if [ "$ABI" = elf32 ]; then linker=(-C linker=/tmp/gcc-i686); fi
+            rustc +1.85.1 --edition=2021 -C opt-level=3 --target "$TARGET" \
+              "${linker[@]}" -L "dependency=$directory" \
+              --extern "gprolog_native=${libs[0]}" \
+              tests/rust_dispatch/bench_solve.rs -o "/tmp/g${version}-bench"
+            if [ "$ABI" = elf32 ]; then readelf -h "/tmp/g${version}-bench" | grep 'Class:.*ELF32'; fi
+            if [ "$ABI" = elf64 ]; then readelf -h "/tmp/g${version}-bench" | grep 'Class:.*ELF64'; fi
+            if ldd "/tmp/g${version}-bench" | grep -Ei 'libgprolog|libgprolog_float_decimal'; then
+              echo "Unexpected C GNU Prolog bridge" >&2
+              exit 1
+            fi
+          done
+      - name: Run paired solve-only timing, parity and negative controls
+        env:
+          ABI: ${{ matrix.abi }}
+        run: |
+          set -euo pipefail
+          python3 tests/rust_dispatch/benchmark.py \
+            --baseline /tmp/g13-bench --candidate /tmp/g14-bench \
+            --abi "$ABI" --output "$PWD/dispatch-benchmark-$ABI.json"
+      - name: Publish untouched raw observations
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: rust-dispatch-matched-${{ matrix.abi }}
+          path: |
+            dispatch-benchmark-${{ matrix.abi }}.json
+            docs/RUST_NATIVE_DISPATCH_PROTOCOL.md
+          if-no-files-found: warn
+          retention-days: 30
