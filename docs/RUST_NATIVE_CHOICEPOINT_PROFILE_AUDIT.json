@@ -1,0 +1,251 @@
+{
+  "task_id": "gprolog-generation16-choicepoint-profile-2026-11-18",
+  "claim": {
+    "text": "Under a first-success T=16, R=64 ground-call path, the Rust solver builds 960 clause choices and clones 30,240 continuation pending-goal elements although none is redone.",
+    "scope": "Standalone Rust-native finite-term subset, 12 fixed profiles each on Linux ELF64 and i686 ELF32, opt-in feature only.",
+    "status_before": "H",
+    "assumptions": [
+      "All target clauses are identical and match",
+      "64 sequential ground query goals",
+      "max_solutions=1",
+      "No cut/failure before first solution",
+      "Rust 1.85.1",
+      "Feature-gated counters operate on actual engine sites"
+    ],
+    "forbidden_promotions": [
+      "No wall-clock causality",
+      "No byte/allocation measurement",
+      "No general ISO or GNU Prolog complexity theorem",
+      "No independently verified semantic correctness"
+    ]
+  },
+  "specification": {
+    "intended_object": "Live operational counts for ChoicePoint push, continuation vector cloning, suffix materialization, redo, cut, trail and work tasks.",
+    "invariants": [
+      "Clause choicepoints=(T-1)*R",
+      "Continuation goal-element clones=(T-1)*R*(R-1)/2",
+      "Redo pops=0 on known first-success cases",
+      "Backtracking/cut/failure positive controls retain semantics"
+    ],
+    "known_answer_cases": [
+      "16 heads x 64 goals predicts 960 choices, 30240 cloned elements, 2016 suffix elements, 0 redo",
+      "T=1 x R=64 predicts 0 clause choices",
+      "T=16 x R=1 predicts 15 choices, 0 cloned pending elements"
+    ]
+  },
+  "implementation": {
+    "artifact": "rust/gprolog-native/src/engine.rs + src/bin/choicepoint_probe.rs (experimental branch); profile.py",
+    "commit": "a445565c143cc630830ee3656582cb27121eed47",
+    "environment": "Ubuntu 24.04 GitHub Actions; rustc 1.85.1; x86_64 ELF64 and i686 ELF32 with real 32-bit GCC linker; no C GNU Prolog runtime link",
+    "live_entrypoint": "engine::solve with Cargo feature choicepoint-profile, invoked by choicepoint-probe",
+    "representation": "Thread-local typed counters incremented at actual ChoicePoint, Vec cloning, Work, BindingStore and cut sites"
+  },
+  "metric": {
+    "name": "Tuple of push, clone, pending-goal-element, redo, prune, binding-write, suffix-materialization and task counts",
+    "type": "typed_tuple",
+    "units": "logical occurrences and pending-goal elements, not bytes",
+    "direction": "partial_order",
+    "raw_before_clipping": true,
+    "semantic_invariance_claimed": true,
+    "equivalence_attacks": [
+      "Ground atomic versus deep compound terms preserve counts but not bytes",
+      "T=1 isolates suffix materialization",
+      "Builtin-only repeat avoids clause choicepoints",
+      "Cuts and backtracking challenge no-redo shortcut"
+    ]
+  },
+  "tests": {
+    "black_box": [
+      "12-case standalone Rust CLI probe with typed machine-readable counter output and intact answer Debug representation"
+    ],
+    "structural": [
+      "Profile calls are at current live push, clone, backtrack, cut and trail sites and disabled when feature off"
+    ],
+    "property_based": [
+      "Deterministic formula family T in {1,2,16,32}, R in {1,8,64}; not a randomized property framework"
+    ],
+    "metamorphic": [
+      "Deep-ground-terms vs atoms",
+      "Builtin only vs user predicate",
+      "Different candidate multiplicity T"
+    ],
+    "fuzzing": [
+      "not applicable: 12 fixed deterministic profiling cases, prior parser stress remains separate historical evidence"
+    ],
+    "historical": [
+      "Feature-disabled Rust tests passed on both ABIs",
+      "Frozen Generation 14 and 15 semantic regression evidence retained"
+    ]
+  },
+  "controls": {
+    "matched_baselines": [
+      "Feature-disabled same-source Rust tests with same ABI/compiler",
+      "Conditional combinatorial formula under inspectable code path"
+    ],
+    "negative_controls": [
+      "T=1,R=64: no choicepoints",
+      "T=16,R=1: no continuation goal clones",
+      "true/0 repetition: no clause choices",
+      "Cut, redo and failing-head positive controls"
+    ],
+    "compute_parity": "Same runner family, pinned compiler and real ABI targets; no timing comparison between instrumented and uninstrumented paths",
+    "parameter_parity": "Same source, query, Limits, compiler and API except the opt-in measurement feature",
+    "sampling_parity": "Deterministic one execution per scenario per ABI; exact logical counts only, no statistical sampling claim",
+    "data_access_parity": "Identical generated source/query fixtures and no external data or hidden oracle"
+  },
+  "preregistration": {
+    "prediction": "T=16,R=64 gives 960 choices, 960 continuation clones, 30240 cloned elements, 2016 suffix materializations, 0 redo",
+    "primary_metric": "Exact typed operation tuple matching frozen formula in 12 cases on two ABIs",
+    "uncertainty_method": "Deterministic structural witness: exact counter equality, no statistical interval; no external validity inference",
+    "kill_condition": "Any mismatched analytic count, unexpected answer order, backtracking/cut/undo control regression or feature-disabled build failure",
+    "stop_condition": "No new representation or performance attribution in the profiler PR before measured counters and independent future A/B ablation",
+    "promotion_rule": "Promote bounded observed operational counts from H to M only when exact dual-ABI CI + raw JSON + semantic controls succeed"
+  },
+  "evidence": {
+    "primary_sources": [
+      "https://github.com/jesusvilela/gprolog/blob/experiment/rust-choicepoint-profile/docs/RUST_NATIVE_CHOICEPOINT_PROFILE_PROTOCOL.md",
+      "https://github.com/jesusvilela/gprolog/blob/experiment/rust-choicepoint-profile/rust/gprolog-native/src/engine.rs"
+    ],
+    "execution_records": [
+      "https://github.com/jesusvilela/gprolog/actions/runs/44274185198",
+      "GitHub raw artifacts 14413483522 (ELF64) and 14413881947 (i686), 30-day retention"
+    ],
+    "independent_witnesses": [],
+    "claim_to_artifact_map": [
+      "Operational counts -> choicepoint-profile-elf64.json and choicepoint-profile-elf32.json",
+      "Analytic family -> profile.py expected_first and protocol",
+      "Default semantics -> feature-disabled cargo tests both ABIs",
+      "Controls -> choicepoint_profile.rs and profile.py"
+    ]
+  },
+  "round_trip": {
+    "edges": [
+      {
+        "from": "requirement",
+        "to": "operational specification",
+        "preserved": [
+          "Separate alternative creation from redo"
+        ],
+        "transformed": [
+          "T/R first-success model"
+        ],
+        "lost": [
+          "General Prolog behavior"
+        ],
+        "remainder": [
+          "Real workloads remain untested"
+        ]
+      },
+      {
+        "from": "operational specification",
+        "to": "representation",
+        "preserved": [
+          "Typed counters and units"
+        ],
+        "transformed": [
+          "Vec/Term source sites become count sites"
+        ],
+        "lost": [
+          "Memory bytes"
+        ],
+        "remainder": [
+          "AST clone sizes not measured"
+        ]
+      },
+      {
+        "from": "representation",
+        "to": "implementation",
+        "preserved": [
+          "Counter updates at live path"
+        ],
+        "transformed": [
+          "Feature-gated Rust instrumentation"
+        ],
+        "lost": [
+          "Uninstrumented timing comparability"
+        ],
+        "remainder": [
+          "Profiler adds CPU overhead"
+        ]
+      },
+      {
+        "from": "implementation",
+        "to": "tests",
+        "preserved": [
+          "Exact control-flow operations"
+        ],
+        "transformed": [
+          "Analytic first-success tests and cut/redo controls"
+        ],
+        "lost": [
+          "Arbitrary programs"
+        ],
+        "remainder": [
+          "Author correlation"
+        ]
+      },
+      {
+        "from": "tests",
+        "to": "measurement",
+        "preserved": [
+          "Native target and raw counters"
+        ],
+        "transformed": [
+          "Two pinned-ABI CI jobs"
+        ],
+        "lost": [
+          "Independent replication"
+        ],
+        "remainder": [
+          "OS/toolchain variation"
+        ]
+      },
+      {
+        "from": "measurement",
+        "to": "interpretation",
+        "preserved": [
+          "Exact counts, independent dimensions"
+        ],
+        "transformed": [
+          "Measured structural overhead"
+        ],
+        "lost": [
+          "Causal time attribution"
+        ],
+        "remainder": [
+          "Shared continuation ablation needed"
+        ]
+      },
+      {
+        "from": "interpretation",
+        "to": "requirement",
+        "preserved": [
+          "Bounded first-success scheduling behavior"
+        ],
+        "transformed": [
+          "Target alternative continuation representation"
+        ],
+        "lost": [
+          "General ISO/WAM runtime"
+        ],
+        "remainder": [
+          "Need held-out tests and cut/undo equivalence"
+        ]
+      }
+    ]
+  },
+  "result": {
+    "observed": "12/12 cases each on ELF64 and i686, identical logical counts and answer Debug traces; T=16,R=64 matches 960 created, 30240 cloned pending-goal elements and 0 redo.",
+    "effect_size": "Not a speedup: 960 alternatives created and unresumed; 30240 elements cloned. T=32,R=64 gives 1984 and 62496.",
+    "uncertainty": "Exact under these deterministic inputs and code paths; external semantic validity, true bytes, wall-clock attribution, independent witness and held-out workloads unresolved.",
+    "status_after": "M",
+    "retired_claims": [
+      "Pending-goal element counts equal bytes or allocations",
+      "Profiler counter overhead estimates uninstrumented runtime contribution"
+    ],
+    "active_remainder": [
+      "Measure equivalent continuation-sharing candidate against frozen release",
+      "Audit multisolutions, cut, failure rollback, deep terms, recursion and step-budget invariance"
+    ]
+  }
+}
