@@ -1,0 +1,135 @@
+name: Rust-native dispatch crossover - frozen 13 vs 14
+
+on:
+  push:
+    branches: [master, 'experiment/rust-dispatch-crossover']
+    paths:
+      - 'tests/rust_dispatch/crossover.py'
+      - 'tests/rust_dispatch/bench_solve.rs'
+      - '.github/workflows/rust-dispatch-crossover.yml'
+      - 'docs/RUST_NATIVE_DISPATCH_CROSSOVER_PROTOCOL.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  crossover:
+    name: Frozen N-T-R grid (${{ matrix.abi }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - abi: elf64
+            target: x86_64-unknown-linux-gnu
+          - abi: elf32
+            target: i686-unknown-linux-gnu
+    steps:
+      - name: Checkout protocol and common external harness
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          fetch-depth: 50
+      - name: Freeze both immutable Rust implementation trees
+        run: |
+          set -euo pipefail
+          GEN13=dd6375e3fff21026b603c7944dd617ed9b391163
+          GEN14=10bd90602502e55f04d0eaafbe71b47de496b3e3
+          git cat-file -e "${GEN13}^{commit}"
+          git cat-file -e "${GEN14}^{commit}"
+          git worktree add --detach /tmp/gprolog-cross-13 "$GEN13"
+          git worktree add --detach /tmp/gprolog-cross-14 "$GEN14"
+          test "$(git -C /tmp/gprolog-cross-13 rev-parse HEAD)" = "$GEN13"
+          test "$(git -C /tmp/gprolog-cross-14 rev-parse HEAD)" = "$GEN14"
+      - name: Check the frozen input generator
+        run: |
+          set -euo pipefail
+          python3 -m py_compile tests/rust_dispatch/crossover.py
+          PYTHONPATH=tests/rust_dispatch python3 - <<'PY'
+          import crossover
+          cases = list(crossover.cases())
+          assert len(cases) == 24, len(cases)
+          for name, source, query, repeats, kind, n, t in cases:
+              assert len(source.splitlines()) == n, name
+              assert len(source.encode()) < 2_000_000, name
+              assert source.count("target(a).\n") == t, name
+              assert repeats in (1, 8, 64), name
+          assert any(name == "builtin_only_10000" for name, *_ in cases)
+          assert any(name == "grouped_10000_t16_r64" for name, *_ in cases)
+          assert any(name == "shared_functor_10000_t1_r64" for name, *_ in cases)
+          print("Generator invariants: 24/24 cases valid")
+          PY
+      - name: Install pinned Rust and target
+        env:
+          ABI: ${{ matrix.abi }}
+          TARGET: ${{ matrix.target }}
+        run: |
+          set -euo pipefail
+          rustup toolchain install 1.85.1 --profile minimal
+          rustup target add "$TARGET" --toolchain 1.85.1
+          rustc +1.85.1 --version
+          if [ "$ABI" = elf32 ]; then
+            sudo apt-get update -qq
+            sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y gcc-multilib libc6-dev-i386
+            cat > /tmp/gcc-i686 <<'SH'
+          #!/bin/sh
+          exec gcc -m32 "$@"
+          SH
+            chmod +x /tmp/gcc-i686
+            echo "CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER=/tmp/gcc-i686" >> "$GITHUB_ENV"
+          fi
+      - name: Build immutable Rust-only libraries, CLI and shared harness
+        env:
+          ABI: ${{ matrix.abi }}
+          TARGET: ${{ matrix.target }}
+        run: |
+          set -euo pipefail
+          for gen in 13 14; do
+            basedir="/tmp/gprolog-cross-$gen"
+            export CARGO_TARGET_DIR="/tmp/gprolog-cross-$gen-target"
+            cargo +1.85.1 build --release --target "$TARGET" --manifest-path "$basedir/Cargo.toml"
+            cp "$CARGO_TARGET_DIR/$TARGET/release/gprolog-rs" "/tmp/cross-$gen-cli"
+            libdir="$CARGO_TARGET_DIR/$TARGET/release/deps"
+            shopt -s nullglob
+            libs=("$libdir"/libgprolog_native-*.rlib)
+            if [ "${#libs[@]}" -ne 1 ]; then
+              echo "Need exactly one Rust library at $libdir" >&2
+              exit 1
+            fi
+            linker=()
+            if [ "$ABI" = elf32 ]; then linker=(-C linker=/tmp/gcc-i686); fi
+            rustc +1.85.1 --edition=2021 -C opt-level=3 -C panic=abort --target "$TARGET" \
+              "${linker[@]}" -L "dependency=$libdir" \
+              --extern "gprolog_native=${libs[0]}" \
+              tests/rust_dispatch/bench_solve.rs -o "/tmp/cross-$gen-bench"
+            if [ "$ABI" = elf32 ]; then
+              readelf -h "/tmp/cross-$gen-bench" | grep 'Class:.*ELF32'
+            else
+              readelf -h "/tmp/cross-$gen-bench" | grep 'Class:.*ELF64'
+            fi
+            if ldd "/tmp/cross-$gen-bench" | grep -Ei 'libgprolog|libgprolog_float_decimal'; then
+              echo "Unexpected runtime C bridge" >&2
+              exit 1
+            fi
+          done
+      - name: Run frozen paired crossover grid
+        env:
+          ABI: ${{ matrix.abi }}
+        run: |
+          set -euo pipefail
+          python3 tests/rust_dispatch/crossover.py \
+            --baseline /tmp/cross-13-bench --candidate /tmp/cross-14-bench \
+            --baseline-cli /tmp/cross-13-cli --candidate-cli /tmp/cross-14-cli \
+            --abi "$ABI" --output "$PWD/crossover-$ABI.json"
+      - name: Upload raw results even if gate fails
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: rust-dispatch-crossover-${{ matrix.abi }}
+          path: |
+            crossover-${{ matrix.abi }}.json
+            docs/RUST_NATIVE_DISPATCH_CROSSOVER_PROTOCOL.md
+          retention-days: 30
+          if-no-files-found: warn
