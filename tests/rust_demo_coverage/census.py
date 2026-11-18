@@ -41,8 +41,10 @@ def verify_original_sources():
         raise ValueError("original public-domain README blob identity changed")
     if b"All files in this demo directory are in the public domain." not in readme:
         raise ValueError("missing original public-domain license statement")
-    if b"This code does not run" not in readme:
-        raise ValueError("upstream intentional non-executable program label absent")
+    # The upstream source *itself*, not README.md, explicitly says
+    # "This code does not run". README describes syntax highlighting.
+    if b"This code does not run" not in (ROOT / "colours.pl").read_bytes():
+        raise ValueError("upstream colours.pl non-executable source note absent")
     files = {x.name for x in ROOT.iterdir() if x.is_file()}
     if files != set(PROGRAMS) | {"README.md"}:
         raise ValueError(f"unexpected demo census file set: {sorted(files)}")

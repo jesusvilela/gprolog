@@ -11,7 +11,7 @@ Enumerate *all four* `.pl` programs in the public-domain `demo/` directory at **
 | `demo/likes.pl` | `88f3d2edcb0fb68c99b559676e5982b3780715f6` | Small food-preference knowledge base |
 | `demo/trace.pl` | `5dd10ee3d9176c0792afbf874c50844679b93659` | Cyclic-map debugger exercise; arithmetic and identity tests |
 | `demo/unicode.pl` | `c7132cc2cee914b6fc132cdd4f22e25010bd6e36` | Unicode syntax/operators, potentially incompatible with older SWI |
-| `demo/colours.pl` | `52391491930d72df055298b28a7d9487847de140` | Syntax-coloring *demonstration*, explicitly **not runnable** in upstream README |
+| `demo/colours.pl` | `52391491930d72df055298b28a7d9487847de140` | Syntax-coloring *demonstration*, explicitly says **“This code does not run” inside colours.pl itself** |
 
 Upstream public-domain notice `demo/README.md` Git blob `fb3850a4dae3c29faea7907d9b3cd48d940fcfaa` says **all files in demo directory public domain**. Preserve the exact upstream source and README bytes (Git blob and SHA256), origin repository and immutable commit. Never modify source in place. Include the original sources in CI artifacts even if parsing fails.
 
@@ -29,7 +29,7 @@ Classify separately:
 - `runtime_or_other_failure`: any other result, with raw exit/stdout/stderr (do not silently coerce).
 - Error offset, message and log are *observations*, not inferred proof that exactly one feature is missing.
 
-The independent SWI load probe is `swipl -q -f none -s <unaltered file.pl> -g true -t halt`, reporting actual SWI version, raw exit/stdout/stderr, and **three-way** categories: clean load, loaded with diagnostics, failed load. This is NOT a conformance oracle for non-executable demos or modern syntax under the pinned distro's possibly older SWI-Prolog. `colours.pl` is expected **intentionally non-executable** according to the upstream README and must not count as a comparable working-program mismatch. If `unicode.pl` fails on distro SWI 9.0.4, preserve this independent version-dependent failure as a limitation, not a Rust-specific conclusion.
+The independent SWI load probe is `swipl -q -f none -s <unaltered file.pl> -g true -t halt`, reporting actual SWI version, raw exit/stdout/stderr, and **three-way** categories: clean load, loaded with diagnostics, failed load. This is NOT a conformance oracle for non-executable demos or modern syntax under the pinned distro's possibly older SWI-Prolog. `colours.pl` is expected **intentionally non-executable** according to colours.pl's own documentation comment and must not count as a comparable working-program mismatch. If `unicode.pl` fails on distro SWI 9.0.4, preserve this independent version-dependent failure as a limitation, not a Rust-specific conclusion.
 
 **Positive semantic control:** For `likes.pl` only, repeat the **same 12 Gen24 frozen queries** with live SWI-Prolog reading the exact original file and the current Rust parser reading exactly the same original file, checking full ordered stdout/stderr/exit with fixed 32 solution/100000 step Rust bounds. No preprocessing or file normalization permitted for *any* of the four original files.
 
