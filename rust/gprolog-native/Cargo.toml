@@ -15,5 +15,13 @@ path = "src/lib.rs"
 name = "gprolog-rs"
 path = "src/main.rs"
 
+[[bin]]
+name = "choicepoint-probe"
+path = "src/bin/choicepoint_probe.rs"
+required-features = ["choicepoint-profile"]
+
+[features]
+choicepoint-profile = []
+
 [dependencies]
 

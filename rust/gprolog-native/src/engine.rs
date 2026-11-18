@@ -4,6 +4,56 @@ use crate::syntax::{Clause, Program, Query, Term};
 use std::collections::HashMap;
 use std::fmt;
 
+#[cfg(feature = "choicepoint-profile")]
+use std::cell::RefCell;
+
+/// Diagnostic-only logical operation counters: not heap bytes or time attribution.
+#[cfg(feature = "choicepoint-profile")]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct ChoicepointProfile {
+    pub user_predicate_dispatches: u64,
+    pub try_clause_tasks: u64,
+    pub work_resume_tasks: u64,
+    pub clause_choices_pushed: u64,
+    pub disjunction_choices_pushed: u64,
+    pub clause_continuation_vectors_cloned: u64,
+    pub clause_continuation_goals_cloned: u64,
+    pub resume_suffix_goals_materialized: u64,
+    pub disjunction_rest_goals_cloned: u64,
+    pub choicepoints_redone: u64,
+    pub cut_choicepoints_pruned: u64,
+    pub binding_writes: u64,
+    pub binding_undo_writes: u64,
+    pub maximum_pending_choices: usize,
+    pub total_search_steps: u64,
+}
+
+#[cfg(feature = "choicepoint-profile")]
+std::thread_local! {
+    static CHOICEPOINT_COUNTERS: RefCell<ChoicepointProfile> =
+        RefCell::new(ChoicepointProfile::default());
+}
+
+/// Reset this thread's counters before one instrumented solve. No production effect.
+#[cfg(feature = "choicepoint-profile")]
+pub fn clear_choicepoint_profile() {
+    CHOICEPOINT_COUNTERS.with(|cell| *cell.borrow_mut() = ChoicepointProfile::default());
+}
+
+/// Snapshot this thread's counters after an instrumented solve.
+#[cfg(feature = "choicepoint-profile")]
+pub fn read_choicepoint_profile() -> ChoicepointProfile {
+    CHOICEPOINT_COUNTERS.with(|cell| cell.borrow().clone())
+}
+
+#[cfg(feature = "choicepoint-profile")]
+fn profile_update(f: impl FnOnce(&mut ChoicepointProfile)) {
+    CHOICEPOINT_COUNTERS.with(|cell| {
+        let mut state = cell.borrow_mut();
+        f(&mut *state);
+    });
+}
+
 const MAX_RESOLUTION_DEPTH: usize = 256;
 
 #[derive(Clone, Copy, Debug)]
@@ -57,9 +107,13 @@ impl BindingStore {
         debug_assert!(!self.values.contains_key(&var));
         self.values.insert(var, value);
         self.trail.push(var);
+        #[cfg(feature = "choicepoint-profile")]
+        profile_update(|p| p.binding_writes += 1);
     }
     fn undo_to(&mut self, mark: usize) {
         assert!(mark <= self.trail.len(), "invalid trail checkpoint");
+        #[cfg(feature = "choicepoint-profile")]
+        profile_update(|p| p.binding_undo_writes += (self.trail.len() - mark) as u64);
         while self.trail.len() > mark {
             let var = self.trail.pop().expect("checked trail length");
             self.values.remove(&var);
@@ -243,6 +297,8 @@ pub fn solve(program: &Program, query: &Query, limits: Limits)
                 Some(point) => {
                     // Redo from precisely the point saved for that choice.
                     bindings.undo_to(point.trail_mark);
+                    #[cfg(feature = "choicepoint-profile")]
+                    profile_update(|p| p.choicepoints_redone += 1);
                     point.next
                 }
                 None => break,
@@ -252,8 +308,12 @@ pub fn solve(program: &Program, query: &Query, limits: Limits)
             return Err(SolveError::StepBudgetExceeded(limits.max_steps));
         }
         steps += 1;
+        #[cfg(feature = "choicepoint-profile")]
+        profile_update(|p| p.total_search_steps += 1);
         match task {
             Work::TryClause { goal, clause_index, continuation, invocation_barrier } => {
+                #[cfg(feature = "choicepoint-profile")]
+                profile_update(|p| p.try_clause_tasks += 1);
                 let fresh = fresh_clause(&program.clauses[clause_index], &mut next_var);
                 let mark = bindings.mark();
                 if unify(&goal, &fresh.head, &mut bindings, 0) {
@@ -268,6 +328,8 @@ pub fn solve(program: &Program, query: &Query, limits: Limits)
                 }
             }
             Work::Resume(goals) => {
+                #[cfg(feature = "choicepoint-profile")]
+                profile_update(|p| p.work_resume_tasks += 1);
                 if goals.is_empty() {
                     let answers = query.variables.iter().map(|(name, id)| {
                         (name.clone(), show_term(&Term::Var(*id), &bindings, 0))
@@ -280,6 +342,8 @@ pub fn solve(program: &Program, query: &Query, limits: Limits)
                 let mut remaining = goals.into_iter();
                 let pending = remaining.next().expect("nonempty checked");
                 let rest: Vec<PendingGoal> = remaining.collect();
+                #[cfg(feature = "choicepoint-profile")]
+                profile_update(|p| p.resume_suffix_goals_materialized += rest.len() as u64);
                 let cut_barrier = pending.cut_barrier;
                 let goal_value = root(&pending.term, &bindings);
                 match &goal_value {
@@ -290,6 +354,10 @@ pub fn solve(program: &Program, query: &Query, limits: Limits)
                             });
                         }
                         // Cut forgets alternatives, NOT live bindings.
+                        #[cfg(feature = "choicepoint-profile")]
+                        profile_update(|p| {
+                            p.cut_choicepoints_pruned += (alternatives.len() - cut_barrier) as u64;
+                        });
                         alternatives.truncate(cut_barrier);
                         active = Some(Work::Resume(rest));
                         continue;
@@ -308,6 +376,12 @@ pub fn solve(program: &Program, query: &Query, limits: Limits)
                         right.extend(rest.iter().cloned());
                         alternatives.push(ChoicePoint {
                             trail_mark: bindings.mark(), next: Work::Resume(right),
+                        });
+                        #[cfg(feature = "choicepoint-profile")]
+                        profile_update(|p| {
+                            p.disjunction_choices_pushed += 1;
+                            p.disjunction_rest_goals_cloned += rest.len() as u64;
+                            p.maximum_pending_choices = p.maximum_pending_choices.max(alternatives.len());
                         });
                         let mut left = Vec::with_capacity(rest.len() + 1);
                         left.push(PendingGoal { term: args[0].clone(), cut_barrier });
@@ -344,6 +418,8 @@ pub fn solve(program: &Program, query: &Query, limits: Limits)
                     return Err(SolveError::UnsupportedGoal(
                         show_term(&goal_value, &bindings, 0)));
                 };
+                #[cfg(feature = "choicepoint-profile")]
+                profile_update(|p| p.user_predicate_dispatches += 1);
                 let clauses = predicate_cache.entry((name.to_owned(), arity))
                     .or_insert_with(|| {
                         // Keep ALL compatible heads, including duplicates and
@@ -368,6 +444,13 @@ pub fn solve(program: &Program, query: &Query, limits: Limits)
                             goal: goal_value.clone(), clause_index: index,
                             continuation: rest.clone(), invocation_barrier,
                         },
+                    });
+                    #[cfg(feature = "choicepoint-profile")]
+                    profile_update(|p| {
+                        p.clause_choices_pushed += 1;
+                        p.clause_continuation_vectors_cloned += 1;
+                        p.clause_continuation_goals_cloned += rest.len() as u64;
+                        p.maximum_pending_choices = p.maximum_pending_choices.max(alternatives.len());
                     });
                 }
                 active = Some(Work::TryClause {
