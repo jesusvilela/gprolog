@@ -36,7 +36,8 @@ fn ground_first_solution(target_facts: usize, repeated_goals: usize) {
     // copied vectors contain zero elements.
     assert_eq!(observed.clause_continuation_vectors_cloned,
                (shared_calls + empty_choice_clones) as u64);
-    assert_eq!(observed.clause_continuation_goals_cloned, suffix as u64);
+    assert_eq!(observed.clause_continuation_goals_cloned,
+               if target_facts > 1 { suffix as u64 } else { 0 });
     assert_eq!(observed.maximum_pending_choices, created);
     assert_eq!(observed.disjunction_choices_pushed, 0);
     assert_eq!(observed.disjunction_rest_goals_cloned, 0);
