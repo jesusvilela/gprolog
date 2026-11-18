@@ -34,7 +34,7 @@ def run_profile(exe, source, query, repeats, solutions, mode, tool, destination,
         flags = ["--tool=callgrind", "--cache-sim=no", "--branch-sim=no",
                  f"--callgrind-out-file={out_file}"]
     cmd = [
-        "valgrind", "--error-exitcode=97", "--quiet",
+        "valgrind", "--error-exitcode=97",
         f"--log-file={tool_log}", *flags, str(exe),
         mode, str(source), query, str(repeats), str(solutions), "200000",
     ]
