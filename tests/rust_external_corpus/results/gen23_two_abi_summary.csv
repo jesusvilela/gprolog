@@ -1,0 +1,15 @@
+case,source_sha256,source_reference,repeat,max_solutions,elf64_gen18_median_ns,elf64_gen19_median_ns,elf64_gen19_over_gen18,elf64_gen19_slower_blocks_of_5,elf32_gen18_median_ns,elf32_gen19_median_ns,elf32_gen19_over_gen18,elf32_gen19_slower_blocks_of_5
+append_ground_r8,5466d162cbe451767ad388cb41eea335380d3e179bc76eb759c5c050b6e5ecff,https://lpn.swi-prolog.org/lpnpage.php?pageid=lpn-htmlse24&pagetype=html,8,1,186376.5,261729,1.404303,5,189387.5,260780.5,1.376968,4
+append_answer_r1,5466d162cbe451767ad388cb41eea335380d3e179bc76eb759c5c050b6e5ecff,https://lpn.swi-prolog.org/lpnpage.php?pageid=lpn-htmlse24&pagetype=html,1,1,12373,12418,1.003637,2,16826,16780.5,0.997296,3
+append_split_r1,5466d162cbe451767ad388cb41eea335380d3e179bc76eb759c5c050b6e5ecff,https://lpn.swi-prolog.org/lpnpage.php?pageid=lpn-htmlse24&pagetype=html,1,4,16364,16594.5,1.014086,2,19625,19710,1.004331,3
+append_wrong_r1,5466d162cbe451767ad388cb41eea335380d3e179bc76eb759c5c050b6e5ecff,https://lpn.swi-prolog.org/lpnpage.php?pageid=lpn-htmlse24&pagetype=html,1,1,15372.5,15553,1.011742,2,21828,21978.5,1.006895,3
+naive_ground_r2,66c0692d36412d3217c0f6c8b556898626fa58b037eef11fffc01ae658f7aa0c,https://lpn.swi-prolog.org/lpnpage.php?pageid=lpn-htmlse25&pagetype=html,2,1,94720.5,102187,1.078827,5,110067.5,122316,1.111282,5
+naive_answer_r1,66c0692d36412d3217c0f6c8b556898626fa58b037eef11fffc01ae658f7aa0c,https://lpn.swi-prolog.org/lpnpage.php?pageid=lpn-htmlse25&pagetype=html,1,1,59322.5,66569,1.122154,5,71353.5,76245,1.068553,5
+acc_ground_r4,203a9f9fd4677d88b544bac31608d18896e385fffa9f0653709291be4630634a,https://lpn.swi-prolog.org/lpnpage.php?pageid=lpn-htmlse25&pagetype=html,4,1,152121.5,171780,1.129229,5,174585,205792.5,1.178752,5
+acc_answer_r1,203a9f9fd4677d88b544bac31608d18896e385fffa9f0653709291be4630634a,https://lpn.swi-prolog.org/lpnpage.php?pageid=lpn-htmlse25&pagetype=html,1,1,23926,23715.5,0.991202,2,26586,26855,1.010118,3
+member_late_r8,2b5975136c312729f70a6bdedee787f07702e3be66c66bb94084fc1511ba43f1,https://www.swi-prolog.org/pldoc/man?section=lists,8,1,102967.5,129157,1.254347,5,120262.5,152847,1.270945,5
+member_all_r1,2b5975136c312729f70a6bdedee787f07702e3be66c66bb94084fc1511ba43f1,https://www.swi-prolog.org/pldoc/man?section=lists,1,4,11902.5,11913,1.000882,3,15093,14867,0.985026,2
+select_duplicate_r1,f01c8a86878d2d83e353090f56e88cbd95efdc7c946887e993f6fd8492c34ad3,https://www.swi-prolog.org/pldoc/man?section=lists,1,2,16905.5,16789.5,0.993138,3,20946.5,21332,1.018404,4
+prefix_all_r1,441a0d23026ae18be8fc24c809f25018cf6ca2a44f90479ca33e6cb31922af6d,https://www.swi-prolog.org/pldoc/man?section=lists,1,4,11477,11622.5,1.012678,2,14171.5,14126,0.996789,3
+single_fact_r8,a2fc46025de39ae74d8f23235a95b893d0c781432f5054e9f126d62ea3d4d0e7,internal:null,8,1,3104.5,3129,1.007892,3,4231,4251.5,1.004845,4
+builtin_true_r8,e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855,internal:null,8,1,520.5,506,0.972142,2,555.5,546,0.982898,1

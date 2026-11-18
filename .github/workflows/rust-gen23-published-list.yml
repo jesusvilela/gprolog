@@ -1,0 +1,166 @@
+name: Gen23 externally documented list relations - native dual ABI audit
+
+on:
+  push:
+    branches: ['experiment/rust-published-list-workloads']
+    paths:
+      - 'tests/rust_external_corpus/**'
+      - 'docs/RUST_GEN23_*'
+      - '.github/workflows/rust-gen23-published-list.yml'
+  pull_request:
+    paths:
+      - 'tests/rust_external_corpus/**'
+      - 'docs/RUST_GEN23_*'
+      - '.github/workflows/rust-gen23-published-list.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native:
+    name: Published relation oracle + frozen Gen18/Gen19 (${{ matrix.abi }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - abi: elf64
+            target: x86_64-unknown-linux-gnu
+          - abi: elf32
+            target: i686-unknown-linux-gnu
+    steps:
+      - name: Checkout exact candidate corpus and protocol
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 80
+          persist-credentials: false
+      - name: Confirm PR synthetic merge source tree and immutable engines
+        env:
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          if [ -n "$PR_HEAD" ]; then
+            git fetch --no-tags origin "$PR_HEAD"
+            test "$(git rev-parse HEAD^{tree})" = "$(git rev-parse "${PR_HEAD}^{tree}")"
+          fi
+          git fetch --no-tags origin refs/pull/18/head
+          BASE=901c8b58c12fbe8b79f70b0118f951f3ed2fcf21
+          REJECTED=c09fff05d9b3dd43fb90014278e3a98d701d3640
+          git cat-file -e "${BASE}^{commit}"
+          git cat-file -e "${REJECTED}^{commit}"
+          git worktree add --detach /tmp/gen23-release "$BASE"
+          git worktree add --detach /tmp/gen23-rejected "$REJECTED"
+          test "$(git -C /tmp/gen23-release rev-parse HEAD)" = "$BASE"
+          test "$(git -C /tmp/gen23-rejected rev-parse HEAD)" = "$REJECTED"
+      - name: Independent list algebra reference self-tests
+        run: |
+          set -euo pipefail
+          python3 -m py_compile tests/rust_external_corpus/fixtures.py
+          python3 -m py_compile tests/rust_external_corpus/benchmark.py
+          python3 tests/rust_external_corpus/fixtures.py
+      - name: Install pinned native Rust compiler and target
+        env:
+          ABI: ${{ matrix.abi }}
+          TARGET: ${{ matrix.target }}
+        run: |
+          set -euo pipefail
+          timeout 240 rustup toolchain install 1.85.1 --profile minimal
+          timeout 120 rustup target add "$TARGET" --toolchain 1.85.1
+          rustc +1.85.1 --version
+          if [ "$ABI" = elf32 ]; then
+            if ! dpkg -s gcc-multilib libc6-dev-i386 >/dev/null 2>&1; then
+              sudo timeout 180 apt-get update -qq
+              # The 32-bit libc/gcc packages may require upgrading the
+              # runner's system libc. The original 240-second bound caused
+              # an infra-only exit 124 on an unusually slow apt mirror.
+              # Keep a finite bound without changing experiment semantics.
+              sudo timeout 1200 env DEBIAN_FRONTEND=noninteractive \
+                apt-get install -y -o Acquire::Retries=3 --no-install-recommends \
+                  gcc-multilib libc6-dev-i386
+            fi
+            cat > /tmp/gcc-i686 <<'SH'
+          #!/bin/sh
+          exec gcc -m32 "$@"
+          SH
+            chmod +x /tmp/gcc-i686
+            echo "CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER=/tmp/gcc-i686" >> "$GITHUB_ENV"
+          fi
+      - name: Build the immutable feature-disabled release engines and shared witness
+        env:
+          ABI: ${{ matrix.abi }}
+          TARGET: ${{ matrix.target }}
+        run: |
+          set -euo pipefail
+          for role in release rejected; do
+            CARGO_TARGET_DIR="/tmp/gen23-${role}-release-target" \
+              cargo +1.85.1 build --release --target "$TARGET" \
+              --manifest-path "/tmp/gen23-${role}/Cargo.toml"
+            dep="/tmp/gen23-${role}-release-target/$TARGET/release/deps"
+            shopt -s nullglob
+            libs=("$dep"/libgprolog_native-*.rlib)
+            test "${#libs[@]}" -eq 1
+            linker=()
+            if [ "$ABI" = elf32 ]; then linker=(-C linker=/tmp/gcc-i686); fi
+            rustc +1.85.1 --edition=2021 -C opt-level=3 -C panic=abort \
+              --target "$TARGET" "${linker[@]}" -L "dependency=$dep" \
+              --extern "gprolog_native=${libs[0]}" \
+              tests/rust_choicepoint/bench_continuations.rs \
+              -o "/tmp/gen23-${role}-bench"
+            cp "/tmp/gen23-${role}-release-target/$TARGET/release/gprolog-rs" \
+              "/tmp/gen23-${role}-cli"
+            if [ "$ABI" = elf32 ]; then
+              readelf -h "/tmp/gen23-${role}-bench" | grep -E 'Class:.*ELF32'
+            else
+              readelf -h "/tmp/gen23-${role}-bench" | grep -E 'Class:.*ELF64'
+            fi
+            if ldd "/tmp/gen23-${role}-bench" | grep -Ei 'libgprolog|libgprolog_float_decimal'; then
+              echo "Historical C bridge found unexpectedly" >&2
+              exit 1
+            fi
+          done
+      - name: Frozen 264-case strict Rust CLI output differential
+        env:
+          ABI: ${{ matrix.abi }}
+        run: |
+          set -euo pipefail
+          python3 /tmp/gen23-rejected/tests/rust_two_clause/differential_owned.py \
+            --baseline /tmp/gen23-release-cli \
+            --candidate /tmp/gen23-rejected-cli \
+            --abi "$ABI" --output "$PWD/gen23-historical-$ABI.json"
+      - name: Published list relation reference oracle and direct-solve A/B
+        env:
+          ABI: ${{ matrix.abi }}
+        run: |
+          set -euo pipefail
+          python3 tests/rust_external_corpus/benchmark.py \
+            --gen18-cli /tmp/gen23-release-cli --gen19-cli /tmp/gen23-rejected-cli \
+            --gen18-bench /tmp/gen23-release-bench \
+            --gen19-bench /tmp/gen23-rejected-bench \
+            --abi "$ABI" --output "$PWD/gen23-external-$ABI.json"
+      - name: Verify fresh immutable corpus, raw block medians and claim audit
+        env:
+          ABI: ${{ matrix.abi }}
+        run: |
+          set -euo pipefail
+          python3 -m py_compile tests/rust_external_corpus/validate_provenance.py
+          python3 tests/rust_external_corpus/validate_provenance.py \
+            --abi "$ABI" \
+            --data "$PWD/gen23-external-$ABI.json" \
+            --historical "$PWD/gen23-historical-$ABI.json"
+      - name: Preserve raw positives and negatives, including failure partials
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: gen23-published-list-${{ matrix.abi }}
+          path: |
+            gen23-historical-${{ matrix.abi }}.json
+            gen23-external-${{ matrix.abi }}.json
+            docs/RUST_GEN23_PUBLISHED_LIST_PROTOCOL.md
+            tests/rust_external_corpus/fixtures.py
+            docs/RUST_GEN23_PUBLISHED_LIST_MANIFEST.json
+            docs/RUST_GEN23_PUBLISHED_LIST_RESULTS.md
+            tests/rust_external_corpus/results/gen23_two_abi_summary.csv
+          retention-days: 30
+          if-no-files-found: warn
