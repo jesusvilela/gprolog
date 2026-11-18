@@ -1,0 +1,260 @@
+{
+  "task_id": "gprolog-gen23-published-relation-transfer-2026-11-18",
+  "claim": {
+    "text": "The rejected Gen19 eager two-clause continuation policy has heterogeneous effects on externally documented list relations, including moderate slowdowns for repeated ground calls but little difference in many one-shot relational queries, while preserving selected finite-list answers.",
+    "scope": "Twelve externally documented relation tasks reconstructed for the Rust finite Horn subset plus two unchanged-path null controls; native ELF64/i686, pinned Rust 1.85.1, 20 samples/version/case/ABI.",
+    "status_before": "H",
+    "assumptions": [
+      "Published list relations correspond to the reconstructed finite Horn subset under a declared answer order",
+      "Python list-algebra oracle is independent from Rust implementation but project-authored",
+      "Both frozen engines are separately compiled from immutable Gen18 and Gen19 commits"
+    ],
+    "forbidden_promotions": [
+      "No independently authored benchmark code or independent experimental study",
+      "No universal Prolog or WAM performance claim",
+      "No full ISO/GNU Prolog semantic conformance",
+      "No causal CPU-time partition from earlier DHAT/Callgrind site labels"
+    ]
+  },
+  "specification": {
+    "intended_object": "A source-linked, finite-list semantic and native-time comparison of two immutable Rust solver ownership representations.",
+    "invariants": [
+      "14 full Python-reference output and exit/stderr comparisons per ABI",
+      "264 full historical Rust CLI differential cases per ABI",
+      "20 raw direct-solve samples per version/case/ABI in five alternating AB/BA blocks",
+      "Two unrelated null controls within [0.8,1.2] ratio on each ABI"
+    ],
+    "known_answer_cases": [
+      "append concat, split, mismatch",
+      "naive versus accumulator list reversal",
+      "member last and enumeration",
+      "select duplicate, prefix enumeration",
+      "single fact and builtin true null controls"
+    ]
+  },
+  "implementation": {
+    "artifact": "tests/rust_external_corpus/fixtures.py; tests/rust_external_corpus/benchmark.py; .github/workflows/rust-gen23-published-list.yml",
+    "commit": "released Gen18 901c8b58c12fbe8b79f70b0118f951f3ed2fcf21 vs retired Gen19 c09fff05d9b3dd43fb90014278e3a98d701d3640",
+    "environment": "Ubuntu 24.04 native ELF64 and true i686 ELF32, pinned Rust 1.85.1 release with feature disabled, Python 3 standard library mathematical oracle",
+    "live_entrypoint": "gprolog_native::solve() via shared external bench_continuations.rs, plus gprolog-rs CLI exact stdout/stderr/exit",
+    "representation": "Fourteen source/query SHA256-provenance cases, complete ordered answer oracle and raw matched timing vectors"
+  },
+  "metric": {
+    "name": "Typed case-by-architecture direct-solve ratio and independent-reference ordered-answer correctness",
+    "type": "typed_tuple",
+    "units": "nanoseconds, unitless ratios, paired block win counts and exact stdout/stderr/exit",
+    "direction": "partial_order",
+    "raw_before_clipping": true,
+    "semantic_invariance_claimed": false,
+    "equivalence_attacks": [
+      "Same relation with ground repeated vs variable single-query form",
+      "Concat satisfied versus unsatisfied",
+      "Repeated versus enumerating member/2",
+      "Naive reverse versus accumulator reverse",
+      "Null single fact and builtin control"
+    ]
+  },
+  "tests": {
+    "black_box": [
+      "14 independently computed Python list expected CLI outputs per ABI",
+      "264 frozen strict full-output Rust CLI comparisons per ABI"
+    ],
+    "structural": [
+      "Exact native ELF64/i686 binary class and Rust pinned source SHA checks",
+      "Same source program SHA256 across both architectures",
+      "All 20 raw samples and 5 AB/BA block ordering per version/case/ABI"
+    ],
+    "property_based": [
+      "not applicable: fixed externally documented input/task family rather than arbitrary generated programs"
+    ],
+    "metamorphic": [
+      "naive and accumulator reverse agree on reversed five-element list",
+      "Concat true/false representation attacks",
+      "Duplicate select alternatives and prefix enumeration order"
+    ],
+    "fuzzing": [
+      "Inherited 264-case deterministic historical source generator, not independent or new fuzzing"
+    ],
+    "historical": [
+      "Gen18 241 strict historical cases and Gen19 264 strict output cases",
+      "Gen20 source-level GlobalAlloc and Gen21/22 external Valgrind instrumentation"
+    ]
+  },
+  "controls": {
+    "matched_baselines": [
+      "Immutable Gen18 baseline vs retired unmerged Gen19 built with same compiler flags/ABI and external harness"
+    ],
+    "negative_controls": [
+      "single_fact_r8",
+      "builtin_true_r8",
+      "append_wrong_r1",
+      "single-answer vs enumerate-all cases"
+    ],
+    "compute_parity": "Same host ABI, compiler, flags and external harness within pairs; separately report architectures.",
+    "parameter_parity": "Same source/query bytes, max steps, max solutions and repeat factor per case.",
+    "sampling_parity": "5 paired alternating AB/BA blocks and 4 timed calls per variant/block, 3 unmeasured warmups per process.",
+    "data_access_parity": "Same source task URLs, source SHA256, program and query strings, oracle code and fixed case selection."
+  },
+  "preregistration": {
+    "prediction": "A large synthetic 8–11x regression need not transfer uniformly; some recursive list/failing-first-goal cases may be slower, without a numerical speedup/slowdown claim fixed in advance.",
+    "primary_metric": "All twelve external relation case ratios and per-block win counts on each native ABI, without scalar collapse; two unrelated controls [0.8,1.2].",
+    "uncertainty_method": "20 raw solve samples per variant/case/ABI, five paired blocks; descriptive geometric mean and block directions only; no external random sample or adjusted inferential confidence.",
+    "kill_condition": "Any Python truth-oracle output mismatch, unsupported parser semantics, source hash divergence, invalid timing sample or unchanged-path null control outside [0.8,1.2].",
+    "stop_condition": "Never tune fixtures to a desired performance sign or change either interpreter to rescue a failed experiment.",
+    "promotion_rule": "M for exact bounded result vector and reference correctness only after both native ABIs and final-head CI; no claim of unbiased external-Prolog generalization."
+  },
+  "evidence": {
+    "primary_sources": [
+      "https://lpn.swi-prolog.org/lpnpage.php?pageid=lpn-htmlse24&pagetype=html",
+      "https://lpn.swi-prolog.org/lpnpage.php?pageid=lpn-htmlse25&pagetype=html",
+      "https://www.swi-prolog.org/pldoc/man?section=lists"
+    ],
+    "execution_records": [
+      "https://github.com/jesusvilela/gprolog/actions/runs/44312393215",
+      "ELF64 14430164859",
+      "i686 14431096651",
+      "tests/rust_external_corpus/results/gen23_two_abi_summary.csv"
+    ],
+    "independent_witnesses": [],
+    "claim_to_artifact_map": [
+      "Python finite-list reference oracle -> fixtures.py and complete CLI expected outputs",
+      "Per-source program SHA and URL -> fourteen raw cases and summary CSV",
+      "Two-ABI direct-solve timing -> raw 20-point blocks per case in artifacts",
+      "Unchanged-path controls -> single_fact_r8 and builtin_true_r8 raw panels",
+      "Historical exact-output parity -> frozen 264-case artifact per ABI"
+    ]
+  },
+  "round_trip": {
+    "edges": [
+      {
+        "from": "requirement",
+        "to": "published relations",
+        "preserved": [
+          "fixed list relation specification",
+          "program source hash and query",
+          "paired ABI/resource limits"
+        ],
+        "transformed": [
+          "documented relation into project-authored compatible Horn program",
+          "timing into case-level ratios"
+        ],
+        "lost": [
+          "optimized SWI operational semantics, population representativeness"
+        ],
+        "remainder": [
+          "No independently authored executable benchmark files or third-party Prolog interpreter oracle"
+        ]
+      },
+      {
+        "from": "published relations",
+        "to": "reconstructed source and Python list reference",
+        "preserved": [
+          "fixed list relation specification",
+          "program source hash and query",
+          "paired ABI/resource limits"
+        ],
+        "transformed": [
+          "documented relation into project-authored compatible Horn program",
+          "timing into case-level ratios"
+        ],
+        "lost": [
+          "optimized SWI operational semantics, population representativeness"
+        ],
+        "remainder": [
+          "No independently authored executable benchmark files or third-party Prolog interpreter oracle"
+        ]
+      },
+      {
+        "from": "reconstructed source and Python list reference",
+        "to": "frozen Rust binaries and execution",
+        "preserved": [
+          "fixed list relation specification",
+          "program source hash and query",
+          "paired ABI/resource limits"
+        ],
+        "transformed": [
+          "documented relation into project-authored compatible Horn program",
+          "timing into case-level ratios"
+        ],
+        "lost": [
+          "optimized SWI operational semantics, population representativeness"
+        ],
+        "remainder": [
+          "No independently authored executable benchmark files or third-party Prolog interpreter oracle"
+        ]
+      },
+      {
+        "from": "frozen Rust binaries and execution",
+        "to": "exact outputs and timing measurements",
+        "preserved": [
+          "fixed list relation specification",
+          "program source hash and query",
+          "paired ABI/resource limits"
+        ],
+        "transformed": [
+          "documented relation into project-authored compatible Horn program",
+          "timing into case-level ratios"
+        ],
+        "lost": [
+          "optimized SWI operational semantics, population representativeness"
+        ],
+        "remainder": [
+          "No independently authored executable benchmark files or third-party Prolog interpreter oracle"
+        ]
+      },
+      {
+        "from": "exact outputs and timing measurements",
+        "to": "bounded transfer interpretation",
+        "preserved": [
+          "fixed list relation specification",
+          "program source hash and query",
+          "paired ABI/resource limits"
+        ],
+        "transformed": [
+          "documented relation into project-authored compatible Horn program",
+          "timing into case-level ratios"
+        ],
+        "lost": [
+          "optimized SWI operational semantics, population representativeness"
+        ],
+        "remainder": [
+          "No independently authored executable benchmark files or third-party Prolog interpreter oracle"
+        ]
+      },
+      {
+        "from": "bounded transfer interpretation",
+        "to": "requirement",
+        "preserved": [
+          "fixed list relation specification",
+          "program source hash and query",
+          "paired ABI/resource limits"
+        ],
+        "transformed": [
+          "documented relation into project-authored compatible Horn program",
+          "timing into case-level ratios"
+        ],
+        "lost": [
+          "optimized SWI operational semantics, population representativeness"
+        ],
+        "remainder": [
+          "No independently authored executable benchmark files or third-party Prolog interpreter oracle"
+        ]
+      }
+    ]
+  },
+  "result": {
+    "observed": "Both native ABIs passed 14/14 Python answer-oracle cases and 264/264 historical strict CLI cases; all timing/negative controls passed. Of twelve published-relation cases, Gen19 slower medians in 10 ELF64 and 9 i686, >=4/5 slower blocks in 5 ELF64 and 6 i686; five cases show same >=4/5 slowdown direction across both. Maximum observed ratio 1.404303 ELF64 and 1.376968 i686.",
+    "effect_size": "Complete signed fourteen-case tuple in CSV; descriptive geometric mean of twelve relation ratios: 1.078411 ELF64 / 1.079179 i686; no universal speed effect.",
+    "uncertainty": "Externally documented relations but author reconstructed code, author-written Python list oracle, curated educational subset; 5 blocks/ABI, no independent Prolog implementation or external author reproduction.",
+    "status_after": "M",
+    "retired_claims": [
+      "Uniform 8-11x synthetic regression transfer to every two-clause Prolog program",
+      "Conflating publicly documented relations with independently authored executable workloads"
+    ],
+    "active_remainder": [
+      "True third-party authored licensed Prolog programs",
+      "Independent SWI/GNU Prolog semantic execution reference",
+      "Real-world workloads with missing/unsupported language features recorded separately"
+    ]
+  }
+}
