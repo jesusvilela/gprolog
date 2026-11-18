@@ -39,7 +39,11 @@ jobs:
                 tests/rust_demo_coverage/upstream/colours.pl \
                 tests/rust_demo_coverage/census.py \
                 tests/rust_demo_coverage/test_census.py \
+                tests/rust_demo_coverage/validate_gen26.py \
                 docs/RUST_GEN26_UPSTREAM_DEMO_CENSUS_PROTOCOL.md \
+                docs/RUST_GEN26_UPSTREAM_DEMO_CENSUS_CORRECTIONS.md \
+                docs/RUST_GEN26_UPSTREAM_DEMO_CENSUS_RESULTS.md \
+                docs/RUST_GEN26_UPSTREAM_DEMO_CENSUS_MANIFEST.json \
                 .github/workflows/rust-gen26-upstream-census.yml
               do
                 test "$(git rev-parse "HEAD:$path")" = "$(git rev-parse "$PR_HEAD:$path")"
@@ -123,6 +127,14 @@ jobs:
           python3 /tmp/gen26-rust19/tests/rust_two_clause/differential_owned.py \
             --baseline /tmp/gen26-rust24-cli --candidate /tmp/gen26-rust25-cli \
             --abi elf64 --output "$PWD/gen26-historical-elf64.json"
+      - name: Audit final-head original-source, diagnostic and semantic provenance
+        run: |
+          set -euo pipefail
+          python3 -m py_compile tests/rust_demo_coverage/validate_gen26.py
+          python3 tests/rust_demo_coverage/validate_gen26.py \
+            --census "$PWD/gen26-complete-demo-census.json" \
+            --oracle "$PWD/gen26-original-likes-oracle.json" \
+            --historical "$PWD/gen26-historical-elf64.json"
       - name: Preserve negative and positive original source outcomes
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -134,5 +146,8 @@ jobs:
             gen26-historical-elf64.json
             tests/rust_demo_coverage/upstream/
             docs/RUST_GEN26_UPSTREAM_DEMO_CENSUS_PROTOCOL.md
+            docs/RUST_GEN26_UPSTREAM_DEMO_CENSUS_CORRECTIONS.md
+            docs/RUST_GEN26_UPSTREAM_DEMO_CENSUS_RESULTS.md
+            docs/RUST_GEN26_UPSTREAM_DEMO_CENSUS_MANIFEST.json
           retention-days: 30
           if-no-files-found: warn
