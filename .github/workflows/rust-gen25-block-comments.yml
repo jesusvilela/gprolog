@@ -1,4 +1,4 @@
-name: Gen25 nested block comments: native regression + original SWI oracle
+name: "Gen25 nested block comments: native regression + original SWI oracle"
 
 on:
   pull_request:
