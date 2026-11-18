@@ -227,6 +227,10 @@ pub fn solve(program: &Program, query: &Query, limits: Limits)
     }
     let mut next_var = query.next_var.max(program.next_var);
     let mut bindings = BindingStore::default();
+    // Cache only signatures that actually occur as user-defined calls.
+    // Do not allocate entries for unrelated predicates or built-in-only runs.
+    // The immutable Program is rescanned once per distinct requested signature.
+    let mut predicate_cache: HashMap<(String, usize), Vec<usize>> = HashMap::new();
     let mut alternatives: Vec<ChoicePoint> = Vec::new();
     let mut active = Some(Work::Resume(query.goals.iter().cloned()
         .map(|term| PendingGoal { term, cut_barrier: 0 }).collect()));
@@ -340,10 +344,16 @@ pub fn solve(program: &Program, query: &Query, limits: Limits)
                     return Err(SolveError::UnsupportedGoal(
                         show_term(&goal_value, &bindings, 0)));
                 };
-                let clauses: Vec<usize> = program.clauses.iter().enumerate()
-                    .filter_map(|(i, clause)|
-                        (clause.head.functor() == Some((name, arity))).then_some(i))
-                    .collect();
+                let clauses = predicate_cache.entry((name.to_owned(), arity))
+                    .or_insert_with(|| {
+                        // Keep ALL compatible heads, including duplicates and
+                        // structurally failing heads, in exact source order.
+                        // Demand lookup changes no TryClause/step semantics.
+                        program.clauses.iter().enumerate()
+                            .filter_map(|(i, clause)|
+                                (clause.head.functor() == Some((name, arity))).then_some(i))
+                            .collect()
+                    });
                 if clauses.is_empty() {
                     return Err(SolveError::UnknownPredicate(name.into(), arity));
                 }
