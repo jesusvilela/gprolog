@@ -1,0 +1,138 @@
+name: "Gen26 complete unmodified SWI demo census and independent loader witness"
+
+on:
+  pull_request:
+    paths:
+      - 'tests/rust_demo_coverage/**'
+      - 'docs/RUST_GEN26_*'
+      - '.github/workflows/rust-gen26-upstream-census.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  original-swi-demo-directory:
+    name: Four exact public-domain SWI sources, native Rust Gen24/Gen25 and SWI loader
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout source and exact PR head under synthetic merge
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          fetch-depth: 80
+      - name: Verify source identity in synthetic PR merge and freeze historical Rust
+        env:
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          if [ -n "$PR_HEAD" ]; then
+            git fetch --no-tags origin "$PR_HEAD"
+            if [ "$(git rev-parse HEAD)" != "$PR_HEAD" ]; then
+              test "$(git rev-parse HEAD^2)" = "$PR_HEAD"
+              for path in \
+                tests/rust_demo_coverage/upstream/README.md \
+                tests/rust_demo_coverage/upstream/likes.pl \
+                tests/rust_demo_coverage/upstream/trace.pl \
+                tests/rust_demo_coverage/upstream/unicode.pl \
+                tests/rust_demo_coverage/upstream/colours.pl \
+                tests/rust_demo_coverage/census.py \
+                tests/rust_demo_coverage/test_census.py \
+                docs/RUST_GEN26_UPSTREAM_DEMO_CENSUS_PROTOCOL.md \
+                .github/workflows/rust-gen26-upstream-census.yml
+              do
+                test "$(git rev-parse "HEAD:$path")" = "$(git rev-parse "$PR_HEAD:$path")"
+              done
+            fi
+          fi
+          git fetch --no-tags origin refs/pull/18/head
+          BASE24=fb9e05acd87e3fe71052e83ef38f26b9c12701d3
+          BASE25=ef2c9869d2224a4c8ee1dbba6df965c8fd286e6f
+          OLD18=901c8b58c12fbe8b79f70b0118f951f3ed2fcf21
+          OLD19=c09fff05d9b3dd43fb90014278e3a98d701d3640
+          for frozen in "$BASE24" "$BASE25" "$OLD18" "$OLD19"; do
+            git cat-file -e "${frozen}^{commit}"
+          done
+          git worktree add --detach /tmp/gen26-rust24 "$BASE24"
+          git worktree add --detach /tmp/gen26-rust25 "$BASE25"
+          git worktree add --detach /tmp/gen26-rust18 "$OLD18"
+          git worktree add --detach /tmp/gen26-rust19 "$OLD19"
+          for source in /tmp/gen26-rust24 /tmp/gen26-rust25 /tmp/gen26-rust18 /tmp/gen26-rust19; do
+            git -C "$source" rev-parse HEAD
+          done
+          cd tests/rust_demo_coverage/upstream
+          test "$(git hash-object README.md)" = fb3850a4dae3c29faea7907d9b3cd48d940fcfaa
+          test "$(git hash-object likes.pl)" = 88f3d2edcb0fb68c99b559676e5982b3780715f6
+          test "$(git hash-object trace.pl)" = 5dd10ee3d9176c0792afbf874c50844679b93659
+          test "$(git hash-object unicode.pl)" = c7132cc2cee914b6fc132cdd4f22e25010bd6e36
+          test "$(git hash-object colours.pl)" = 52391491930d72df055298b28a7d9487847de140
+          wc -c *.pl README.md
+      - name: Known-answer and negative class tests
+        run: |
+          set -euo pipefail
+          python3 -m py_compile tests/rust_demo_coverage/census.py
+          python3 -m py_compile tests/rust_demo_coverage/test_census.py
+          python3 tests/rust_demo_coverage/test_census.py
+      - name: Install pinned Rust and external system SWI interpreter
+        run: |
+          set -euo pipefail
+          timeout 240 rustup toolchain install 1.85.1 --profile minimal
+          timeout 120 rustup target add x86_64-unknown-linux-gnu --toolchain 1.85.1
+          if ! command -v swipl >/dev/null 2>&1; then
+            sudo timeout 240 apt-get update -qq
+            sudo timeout 1200 env DEBIAN_FRONTEND=noninteractive \
+              apt-get install -y -o Acquire::Retries=3 --no-install-recommends swi-prolog-nox
+          fi
+          rustc +1.85.1 --version
+          swipl --version
+      - name: Build three immutable Rust versions with same flags and ABI
+        run: |
+          set -euo pipefail
+          for gen in 18 24 25; do
+            CARGO_TARGET_DIR="/tmp/gen26-rust${gen}-release" \
+              cargo +1.85.1 build --release --target x86_64-unknown-linux-gnu \
+              --manifest-path "/tmp/gen26-rust${gen}/Cargo.toml"
+            cp "/tmp/gen26-rust${gen}-release/x86_64-unknown-linux-gnu/release/gprolog-rs" \
+              "/tmp/gen26-rust${gen}-cli"
+            readelf -h "/tmp/gen26-rust${gen}-cli" | grep -E 'Class:.*ELF64'
+            if ldd "/tmp/gen26-rust${gen}-cli" | grep -Ei 'libgprolog|libgprolog_float_decimal'; then
+              echo "Unexpected GNU Prolog C bridge in standalone Rust engine" >&2
+              exit 1
+            fi
+          done
+      - name: Re-execute twelve original-source SWI semantic controls
+        run: |
+          set -euo pipefail
+          python3 tests/rust_block_comments/verify_original.py \
+            --swi swipl --gen18 /tmp/gen26-rust18-cli \
+            --candidate /tmp/gen26-rust25-cli \
+            --output "$PWD/gen26-original-likes-oracle.json"
+      - name: Four-file immutable source census, exact loader diagnostics
+        run: |
+          set -euo pipefail
+          python3 tests/rust_demo_coverage/census.py \
+            --gen24 /tmp/gen26-rust24-cli \
+            --gen25 /tmp/gen26-rust25-cli \
+            --swi swipl \
+            --oracle "$PWD/gen26-original-likes-oracle.json" \
+            --output "$PWD/gen26-complete-demo-census.json"
+      - name: Preserve all previous supported historical CLI behavior
+        run: |
+          set -euo pipefail
+          python3 /tmp/gen26-rust19/tests/rust_two_clause/differential_owned.py \
+            --baseline /tmp/gen26-rust24-cli --candidate /tmp/gen26-rust25-cli \
+            --abi elf64 --output "$PWD/gen26-historical-elf64.json"
+      - name: Preserve negative and positive original source outcomes
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: gen26-entire-public-domain-SWI-demo
+          path: |
+            gen26-complete-demo-census.json
+            gen26-original-likes-oracle.json
+            gen26-historical-elf64.json
+            tests/rust_demo_coverage/upstream/
+            docs/RUST_GEN26_UPSTREAM_DEMO_CENSUS_PROTOCOL.md
+          retention-days: 30
+          if-no-files-found: warn
