@@ -89,16 +89,47 @@ def invoke(command, timeout=50):
 
 
 def parse_swi_atom_list(output):
-    # write_canonical/1 on findall for this frozen program is a flat list
-    # of plain lowercase atoms, with no quoting or nested terms.
+    """Parse a frozen flat atom list from ISO canonical or list notation.
+
+    SWI write_canonical/1 may emit nested list constructor terms such as
+    '[|]'(a,'[|]'(b,[])) because it ignores operator/list declarations.
+    Never assume write_canonical() always emits [a,b].
+    """
     source = output.strip()
-    if not source.startswith("[") or not source.endswith("]"):
-        raise RuntimeError(f"invalid reference canonical list: {source!r}")
-    inner = source[1:-1]
-    atoms = [] if not inner else inner.split(",")
-    if any(not ATOM_PATTERN.fullmatch(x) for x in atoms):
-        raise RuntimeError(f"non-plain-atom reference result unsupported: {source!r}")
-    return atoms
+    if source == "[]":
+        return []
+    if source.startswith("[") and source.endswith("]") and "(" not in source:
+        inner = source[1:-1]
+        atoms = [] if not inner else [x.strip() for x in inner.split(",")]
+        if any(not ATOM_PATTERN.fullmatch(x) for x in atoms):
+            raise RuntimeError(f"unsupported SWI list atom: {source!r}")
+        return atoms
+    for ctor in ("'[|]'(", "'.'(", "[|](", ".("):
+        if source.startswith(ctor) and source.endswith(")"):
+            interior = source[len(ctor):-1]
+            pivot = interior.find(",")
+            if pivot <= 0:
+                raise RuntimeError(f"malformed SWI constructor: {source!r}")
+            head = interior[:pivot].strip()
+            tail = interior[pivot+1:].strip()
+            if not ATOM_PATTERN.fullmatch(head):
+                raise RuntimeError(f"non-plain SWI atom: {head!r}")
+            return [head, *parse_swi_atom_list(tail)]
+    raise RuntimeError(f"unsupported reference canonical list: {source!r}")
+
+
+def reference_parser_self_test():
+    expected = ["dahl", "chop_suey"]
+    assert parse_swi_atom_list("[dahl,chop_suey]") == expected
+    assert parse_swi_atom_list("'[|]'(dahl,'[|]'(chop_suey,[]))") == expected
+    assert parse_swi_atom_list("'.'(dahl,'.'(chop_suey,[]))") == expected
+    assert parse_swi_atom_list("[]") == []
+    for malformed in ("[a|X]", "[a,'bad input']", "foo(a,b)", "'[|]'(a,X)"):
+        try:
+            parse_swi_atom_list(malformed)
+            raise AssertionError(f"invalid canonical syntax accepted: {malformed}")
+        except RuntimeError:
+            pass
 
 
 def external_reference(swi, raw_file, case):
@@ -136,6 +167,7 @@ def main():
     args = p.parse_args()
     output = args.output.resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
+    reference_parser_self_test()
     report = {
         "protocol": "docs/RUST_GEN24_UPSTREAM_ORACLE_PROTOCOL.md",
         "upstream_commit": UPSTREAM_COMMIT,
