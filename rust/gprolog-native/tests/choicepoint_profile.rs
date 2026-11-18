@@ -24,7 +24,7 @@ fn ground_first_solution(target_facts: usize, repeated_goals: usize) {
     assert_eq!(observed.try_clause_tasks, repeated_goals as u64);
     assert_eq!(observed.work_resume_tasks, repeated_goals as u64 + 1);
     assert_eq!(observed.total_search_steps, (2 * repeated_goals + 1) as u64);
-    assert_eq!(observed.resume_suffix_goals_materialized, suffix as u64);
+    assert_eq!(observed.resume_suffix_goals_materialized, 0);
     assert_eq!(observed.clause_choices_pushed, created as u64);
     let shared_calls = if target_facts > 1 { repeated_goals - 1 } else { 0 };
     let empty_choice_clones = if target_facts > 1 { target_facts - 1 } else { 0 };
