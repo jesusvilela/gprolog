@@ -133,6 +133,16 @@ jobs:
             --gen18-bench /tmp/gen23-release-bench \
             --gen19-bench /tmp/gen23-rejected-bench \
             --abi "$ABI" --output "$PWD/gen23-external-$ABI.json"
+      - name: Verify fresh immutable corpus, raw block medians and claim audit
+        env:
+          ABI: ${{ matrix.abi }}
+        run: |
+          set -euo pipefail
+          python3 -m py_compile tests/rust_external_corpus/validate_provenance.py
+          python3 tests/rust_external_corpus/validate_provenance.py \
+            --abi "$ABI" \
+            --data "$PWD/gen23-external-$ABI.json" \
+            --historical "$PWD/gen23-historical-$ABI.json"
       - name: Preserve raw positives and negatives, including failure partials
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -143,5 +153,8 @@ jobs:
             gen23-external-${{ matrix.abi }}.json
             docs/RUST_GEN23_PUBLISHED_LIST_PROTOCOL.md
             tests/rust_external_corpus/fixtures.py
+            docs/RUST_GEN23_PUBLISHED_LIST_MANIFEST.json
+            docs/RUST_GEN23_PUBLISHED_LIST_RESULTS.md
+            tests/rust_external_corpus/results/gen23_two_abi_summary.csv
           retention-days: 30
           if-no-files-found: warn
