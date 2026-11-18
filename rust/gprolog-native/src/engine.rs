@@ -484,7 +484,11 @@ pub fn solve(program: &Program, query: &Query, limits: Limits)
                 // pushing this predicate's alternative clauses.
                 let invocation_barrier = alternatives.len();
                 let mark = bindings.mark();
-                let continuation = if clauses.len() > 1 && !rest.is_empty() {
+                // An Arc cannot reduce the number of Vec goal-element copies for
+                // two candidate clauses on an all-success first-answer path.
+                // Keep the owned fast path for T<=2; pre-registered failure
+                // controls explicitly test the risk of earlier eager copying.
+                let continuation = if clauses.len() >= 3 && !rest.is_empty() {
                     #[cfg(feature = "choicepoint-profile")]
                     profile_update(|p| p.shared_continuation_anchors += 1);
                     ClauseContinuation::Shared(Arc::new(rest))
