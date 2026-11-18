@@ -46,7 +46,12 @@ jobs:
                 tests/rust_cross_origin_corpus/upstream/scryer/src/examples/echo_server.pl \
                 tests/rust_cross_origin_corpus/census.py \
                 tests/rust_cross_origin_corpus/test_census.py \
+                tests/rust_cross_origin_corpus/validate_gen27.py \
+                tests/rust_cross_origin_corpus/results/gen27_source_census.csv \
                 docs/RUST_GEN27_CROSS_PROJECT_SOURCE_PROTOCOL.md \
+                docs/RUST_GEN27_CROSS_PROJECT_SOURCE_RESULTS.md \
+                docs/RUST_GEN27_CROSS_PROJECT_SOURCE_CORRECTIONS.md \
+                docs/RUST_GEN27_CROSS_PROJECT_SOURCE_MANIFEST.json \
                 .github/workflows/rust-gen27-cross-project.yml
               do
                 test "$(git rev-parse "HEAD:$f")" = "$(git rev-parse "$PR_HEAD:$f")"
@@ -119,6 +124,14 @@ jobs:
             --baseline /tmp/gen27-rust24-cli \
             --candidate /tmp/gen27-rust26-cli \
             --abi elf64 --output "$PWD/gen27-historical-elf64.json"
+      - name: Recompute final-head source licence and independent semantic evidence
+        run: |
+          set -euo pipefail
+          python3 -m py_compile tests/rust_cross_origin_corpus/validate_gen27.py
+          python3 tests/rust_cross_origin_corpus/validate_gen27.py \
+            --census "$PWD/gen27-seven-originals.json" \
+            --oracle "$PWD/gen27-likes-original-swi.json" \
+            --historical "$PWD/gen27-historical-elf64.json"
       - name: Save all raw sources, positive and negative observations
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -130,5 +143,9 @@ jobs:
             gen27-historical-elf64.json
             tests/rust_cross_origin_corpus/upstream/
             docs/RUST_GEN27_CROSS_PROJECT_SOURCE_PROTOCOL.md
+            docs/RUST_GEN27_CROSS_PROJECT_SOURCE_RESULTS.md
+            docs/RUST_GEN27_CROSS_PROJECT_SOURCE_CORRECTIONS.md
+            docs/RUST_GEN27_CROSS_PROJECT_SOURCE_MANIFEST.json
+            tests/rust_cross_origin_corpus/results/gen27_source_census.csv
           retention-days: 30
           if-no-files-found: warn
