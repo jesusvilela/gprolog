@@ -41,3 +41,11 @@ Compare unchanged Generation 13 executable at `dd6375e3fff21026b603c7944dd617ed9
 - **H pending CI:** indexed dispatch preserves all declared observables.
 - **S:** a Rust-native predicate catalogue is a stepping stone toward a compiled engine; it is not the WAM.
 - **R:** any broad claim that indexed dispatch alone implements first-argument indexing, a native compiler, or full ISO Prolog.
+
+## Amendment (post-measurement; original preregistration preserved)
+
+The eagerly populated catalogue above was **retired for performance**,
+not erased or silently replaced. The subsequent, separately preregistered
+demand-cache design supersedes its *construction strategy*, not the
+semantic invariants. See [the dated correction ledger](RUST_NATIVE_DISPATCH_CORRECTION.md)
+and the original unmodified release benchmark artifacts.

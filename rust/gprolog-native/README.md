@@ -81,3 +81,19 @@ See ../../docs/RUST_NATIVE_TRAIL_PROTOCOL.md and
 AST terms remain separately owned. Full term-cell allocation,
 garbage collection, attributed constraints and compiled WAM execution
 are still Rust implementation obligations. No C fallback.
+
+## Generation 14 — demand-cached predicate signatures
+
+The standalone Rust solver now builds a per-`solve` cache **only after a
+user-defined predicate signature is requested**. The first request gathers
+the exact source-ordered matching indices; subsequent calls reuse them.
+All clause candidates still pass through unchanged `TryClause` and undo-
+trail execution, so this is not first-argument indexing or a WAM heap.
+
+The initial **eager** global catalogue was retired after a benchmark
+regression. Its corrected demand cache reduced direct `solve()` time on
+the fixed 10,000-distractor/96-call synthetic experiment by 94.33% on
+ELF64 and 93.18% on i686 ELF32 relative to immutable Generation 13.
+The tiny-program control regressed on i686 by 10.57%. Neither result
+generalizes to real Prolog applications. See
+[the correction and evidence ledger](../../docs/RUST_NATIVE_DISPATCH_CORRECTION.md).

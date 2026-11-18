@@ -79,3 +79,39 @@ search-budget policy are unchanged.
 
 The initial eager-index performance hypothesis is **R**.
 The lazy-cache proposal is **H** until the same matched controls execute.
+
+## Post-correction measured disposition — 18 November 2026
+
+The replacement **lazy demand cache** at source commit
+`6e4157140f60bb1dd58abf6a05f9ac126731d98f` passed both ABI
+matched benchmark jobs (workflow [44257730505](https://github.com/jesusvilela/gprolog/actions/runs/44257730505)).
+The benchmark answered identically in all 5 paired blocks on each ABI.
+
+| Workload | ELF64 Gen13 -> lazy Gen14 (ns) | i686 ELF32 Gen13 -> lazy Gen14 (ns) |
+| --- | ---: | ---: |
+| `sparse_96`: 10,000 other heads | 1,343,978 -> 76,202.5 (**-94.33%**) | 1,511,643 -> 103,092 (**-93.18%**) |
+| `single_1`: one predicate call | 14,112 -> 14,213 (+0.72%) | 15,414 -> 15,654 (+1.56%) |
+| `builtin_96`: 96 `true` goals | 8,873 -> 9,226.5 (+3.98%) | 11,977 -> 12,092.5 (+0.96%) |
+| `tiny_96`: one-clause program | 58,982 -> 61,479.5 (+4.23%) | 80,640 -> 89,166 (**+10.57%**) |
+
+In the primary sparse workload the candidate was faster in 5/5 paired
+blocks for both ABIs. Program parsing, process startup and total elapsed
+end-to-end user time are **excluded** from the reported primary metric.
+Peak process RSS for that workload was 8,184/8,196 KiB (ELF64 Gen13/lazy)
+and 5,128/5,088 KiB (i686); the small variations cannot be attributed
+causally to the cache alone.
+
+Untouched raw JSON artifacts: [ELF64 artifact 14407335286](https://github.com/jesusvilela/gprolog/actions/runs/44257730505/artifacts/14407335286)
+and [i686 artifact 14406990977](https://github.com/jesusvilela/gprolog/actions/runs/44257730505/artifacts/14406990977).
+Each contains 20 samples per variant per case, process RSS, program
+SHA256, strict answer equality, controls and AB/BA order. Artifacts have
+30-day retention; the benchmark script and the source fixtures remain
+versioned and reproducible.
+
+**Evidence tags:** eager-index speedup = **R** (retired). Lazy-cache
+synthetic sparse performance = **M** (measured on these two runners).
+Full solution-space semantics, ISO conformance, WAM and broad or
+end-to-end speedup = **H / unestablished**. All authorship is
+correlated: the frozen Generation 13 Rust implementation and
+Generation 14 candidate share the project lineage. This is not an
+independent outside reproduction.

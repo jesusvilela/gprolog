@@ -69,6 +69,8 @@ from lazy clause evaluation, nor establish broad Prolog performance.
 The earlier ELF64 result (20.99 / 15.03 ms) is retained in the
 audit's raw historical record rather than averaged across runners.
 
+**On-demand predicate signature memoization (Generation 14).** After a failed eager-index benchmark, the Rust engine now caches the ordered clause indices **only for signatures actually called** during a solve. On a preregistered synthetic query with 10,000 unrelated heads and 96 target calls, identical external Rust harnesses recorded **1.344 ms -> 0.076 ms (94.33% less solve time) on ELF64** and **1.512 ms -> 0.103 ms (93.18% less) on i686 ELF32**, relative to the immutable Generation 13 baseline. These are 20-sample, solve-only medians per ABI; they do not include parsing, and they do **not** establish universal speedups. The tiny-program control regressed by **10.57% on i686**. Full negative results, controls, per-ABI raw artifact references, and the correction history are in [Generation 14 correction ledger](docs/RUST_NATIVE_DISPATCH_CORRECTION.md). No C bridge or WAM is introduced.
+
 This **does not** mean GNU Prolog has been fully rewritten.
 Full ISO operators, if-then, arithmetic, the WAM compiler/runtime,
 rational trees, finite-domain constraints and native backends remain missing.
