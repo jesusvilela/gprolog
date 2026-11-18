@@ -24,11 +24,13 @@ COUNTERS = (
 
 
 def cases():
-    primary = [(1, 1), (1, 64), (2, 64), (16, 1),
+    primary = [(1, 1), (1, 64), (2, 64), (3, 64), (16, 1),
                (16, 8), (16, 64), (32, 64)]
     for t, r in primary:
         yield f"first_t{t}_r{r}", "target(a).\n" * t, "target(a).", r, 1, "first"
     # Goal size changes the bytes copied, not the count of pending goals.
+    yield ("deep_t2_r64", "target(f(a,b,c,d,e)).\n" * 2,
+           "target(f(a,b,c,d,e)).", 64, 1, "deep-terms")
     yield ("deep_t16_r64", "target(f(a,b,c,d,e)).\n" * 16,
            "target(f(a,b,c,d,e)).", 64, 1, "deep-terms")
     yield ("builtin_r64", "target(a).\n", "true.", 64, 1, "builtin")
@@ -43,15 +45,15 @@ def cases():
 def expected_first(t, r):
     suffix = r * (r - 1) // 2
     choices = (t - 1) * r
-    shared_calls = r - 1 if t > 1 else 0
-    empty_owned_copies = t - 1 if t > 1 else 0
+    shared_calls = r - 1 if t >= 3 else 0
+    owned_choice_copies = (r if t == 2 else (t - 1 if t >= 3 else 0))
     return {
         "user_predicate_dispatches": r,
         "try_clause_tasks": r,
         "work_resume_tasks": r + 1,
         "clause_choices_pushed": choices,
         "disjunction_choices_pushed": 0,
-        "clause_continuation_vectors_cloned": shared_calls + empty_owned_copies,
+        "clause_continuation_vectors_cloned": shared_calls + owned_choice_copies,
         "clause_continuation_goals_cloned": suffix if t > 1 else 0,
         "shared_continuation_anchors": shared_calls,
         "shared_continuation_handle_clones": shared_calls * (t - 1),
@@ -161,7 +163,7 @@ def main():
         for label, source, query, repeat, max_solutions, kind in cases():
             try:
                 measured = run_probe(binary, source, query, repeat, max_solutions, temp, label)
-                t = 16 if kind == "deep-terms" else int(label.split("_t")[1].split("_")[0]) if kind == "first" else 0
+                t = int(label.split("_t")[1].split("_")[0]) if kind in ("first", "deep-terms") else 0
                 decision = check_expected(label, kind, t, repeat, measured["counters"])
                 measured["kind"] = kind
                 measured["prediction_check"] = decision
@@ -185,7 +187,7 @@ def main():
             except (ValueError, OSError, RuntimeError, subprocess.TimeoutExpired) as exc:
                 report["errors"].append({"case": label, "exception": str(exc)})
                 print("PROFILE", args.abi, label, "ERROR", str(exc), flush=True)
-    report["passed"] = not report["errors"] and len(report["cases"]) == 12
+    report["passed"] = not report["errors"] and len(report["cases"]) == 14
     args.output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
     print("RESULT", args.abi, report["passed"], len(report["cases"]),
           "cases errors", len(report["errors"]), flush=True)
