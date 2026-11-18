@@ -23,10 +23,9 @@ GEN14_PROTOCOL = "docs/RUST_NATIVE_DISPATCH_PROTOCOL.md"
 def fixtures():
     # Program size under the Rust parser's 2 MB limit. Distractors are in
     # separate functors, hence each should be irrelevant to target/1.
-    noisy = "".join(f"noise{i:05d}(v).\n" for i in range(10_000))
-    middle = len(noisy) // 2
-    # Split at a newline; source is intentionally interleaved, not grouped.
-    first, second = noisy[:middle], noisy[middle:]
+    noise = [f"noise{i:05d}(v).\n" for i in range(10_000)]
+    # Split at a clause boundary; never split the source in the middle of a term.
+    first, second = "".join(noise[:5000]), "".join(noise[5000:])
     source = first + "target(a).\n" + second
     return (
         ("sparse_96", source, "target(a).", 96, "primary: 10k unrelated clauses, 96 target calls"),
