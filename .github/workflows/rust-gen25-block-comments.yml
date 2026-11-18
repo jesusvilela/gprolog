@@ -43,7 +43,11 @@ jobs:
               for path in \
                 rust/gprolog-native/src/syntax.rs \
                 tests/rust_block_comments/verify_original.py \
+                tests/rust_block_comments/validate_gen25.py \
                 docs/RUST_GEN25_BLOCK_COMMENTS_PROTOCOL.md \
+                docs/RUST_GEN25_BLOCK_COMMENTS_RESULTS.md \
+                docs/RUST_GEN25_BLOCK_COMMENTS_MANIFEST.json \
+                docs/RUST_GEN25_BLOCK_COMMENTS_CORRECTIONS.md \
                 .github/workflows/rust-gen25-block-comments.yml
               do
                 test "$(git rev-parse "HEAD:$path")" = "$(git rev-parse "$PR_HEAD:$path")"
@@ -145,6 +149,22 @@ jobs:
             --swi swipl --gen18 /tmp/gen25-gen18-cli \
             --candidate /tmp/gen25-new-cli \
             --output "$PWD/gen25-unmodified-swi-elf64.json"
+      - name: Validate source-linked final evidence and exact resource limits
+        env:
+          ABI: ${{ matrix.abi }}
+        run: |
+          set -euo pipefail
+          python3 -m py_compile tests/rust_block_comments/validate_gen25.py
+          if [ "$ABI" = elf64 ]; then
+            python3 tests/rust_block_comments/validate_gen25.py \
+              --abi elf64 \
+              --historical "$PWD/gen25-historical-elf64.json" \
+              --original-oracle "$PWD/gen25-unmodified-swi-elf64.json"
+          else
+            python3 tests/rust_block_comments/validate_gen25.py \
+              --abi elf32 \
+              --historical "$PWD/gen25-historical-elf32.json"
+          fi
       - name: Preserve success and failure raw evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -154,6 +174,9 @@ jobs:
             gen25-historical-${{ matrix.abi }}.json
             gen25-unmodified-swi-elf64.json
             docs/RUST_GEN25_BLOCK_COMMENTS_PROTOCOL.md
+            docs/RUST_GEN25_BLOCK_COMMENTS_CORRECTIONS.md
+            docs/RUST_GEN25_BLOCK_COMMENTS_RESULTS.md
+            docs/RUST_GEN25_BLOCK_COMMENTS_MANIFEST.json
             tests/rust_block_comments/verify_original.py
             tests/rust_upstream_corpus/upstream/likes.pl
           retention-days: 30
