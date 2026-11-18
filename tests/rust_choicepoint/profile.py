@@ -56,7 +56,7 @@ def expected_first(t, r):
         "shared_continuation_anchors": shared_calls,
         "shared_continuation_handle_clones": shared_calls * (t - 1),
         "shared_continuation_fallback_copies": shared_calls,
-        "resume_suffix_goals_materialized": suffix,
+        "resume_suffix_goals_materialized": 0,
         "disjunction_rest_goals_cloned": 0,
         "choicepoints_redone": 0,
         "cut_choicepoints_pruned": 0,
@@ -82,7 +82,7 @@ def check_expected(label, kind, t, r, counts):
             "shared_continuation_anchors": 0,
             "shared_continuation_handle_clones": 0,
             "shared_continuation_fallback_copies": 0,
-            "resume_suffix_goals_materialized": suffix,
+            "resume_suffix_goals_materialized": 0,
             "choicepoints_redone": 0,
             "total_search_steps": r + 1,
         }

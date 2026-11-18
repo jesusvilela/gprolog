@@ -1,0 +1,184 @@
+name: Rust reversed goal stack - Gen17 parity and A/B
+
+on:
+  push:
+    branches: ['rust/reversed-goal-stack']
+    paths:
+      - 'rust/gprolog-native/**'
+      - 'tests/rust_goal_stack/**'
+      - 'tests/rust_choicepoint/**'
+      - '.github/workflows/rust-reversed-goal-stack.yml'
+      - 'docs/RUST_NATIVE_REVERSED_GOAL_STACK_PROTOCOL.md'
+      - 'docs/RUST_NATIVE_REVERSED_GOAL_STACK_RESULTS.md'
+      - 'docs/RUST_NATIVE_REVERSED_GOAL_STACK_CORRECTION.md'
+  pull_request:
+    paths:
+      - 'rust/gprolog-native/**'
+      - 'tests/rust_goal_stack/**'
+      - 'tests/rust_choicepoint/**'
+      - '.github/workflows/rust-reversed-goal-stack.yml'
+      - 'docs/RUST_NATIVE_REVERSED_GOAL_STACK_PROTOCOL.md'
+      - 'docs/RUST_NATIVE_REVERSED_GOAL_STACK_RESULTS.md'
+      - 'docs/RUST_NATIVE_REVERSED_GOAL_STACK_CORRECTION.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  exact-ab:
+    name: Gen17 vs reversed stack (${{ matrix.abi }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - abi: elf64
+            target: x86_64-unknown-linux-gnu
+          - abi: elf32
+            target: i686-unknown-linux-gnu
+    steps:
+      - name: Checkout candidate and immutable Generation 17 tree
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 60
+          persist-credentials: false
+      - name: Verify PR merge ref and source-head tree identity
+        env:
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          current="$(git rev-parse HEAD)"
+          current_tree="$(git rev-parse HEAD^{tree})"
+          if [ -n "$PR_HEAD" ]; then
+            git cat-file -e "${PR_HEAD}^{commit}"
+            expected_tree="$(git rev-parse "${PR_HEAD}^{tree}")"
+            echo "Checked-out candidate $current tree $current_tree"
+            echo "PR branch-head $PR_HEAD tree $expected_tree"
+            test "$current_tree" = "$expected_tree"
+          else
+            echo "Branch push commit $current tree $current_tree"
+          fi
+      - name: Freeze reference source
+        run: |
+          set -euo pipefail
+          BASE=46b536889e1b461af9e6cddb7f50239eec5697f5
+          git cat-file -e "${BASE}^{commit}"
+          git worktree add --detach /tmp/gen17-frozen "$BASE"
+          test "$(git -C /tmp/gen17-frozen rev-parse HEAD)" = "$BASE"
+          git rev-parse HEAD
+      - name: Install pinned native Rust target
+        env:
+          ABI: ${{ matrix.abi }}
+          TARGET: ${{ matrix.target }}
+        run: |
+          set -euo pipefail
+          rustup toolchain install 1.85.1 --profile minimal
+          rustup target add "$TARGET" --toolchain 1.85.1
+          rustc +1.85.1 --version
+          if [ "$ABI" = elf32 ]; then
+            sudo apt-get update -qq
+            sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y gcc-multilib libc6-dev-i386
+            cat > /tmp/gcc-i686 <<'SH'
+          #!/bin/sh
+          exec gcc -m32 "$@"
+          SH
+            chmod +x /tmp/gcc-i686
+            echo "CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER=/tmp/gcc-i686" >> "$GITHUB_ENV"
+          fi
+      - name: Native Rust default execution and source-order tests
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          set -euo pipefail
+          CARGO_TARGET_DIR=/tmp/gen18-target cargo +1.85.1 test \
+            --manifest-path rust/gprolog-native/Cargo.toml \
+            --target "$TARGET" --all-targets
+      - name: Instrumented counter parity and profile controls
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          set -euo pipefail
+          CARGO_TARGET_DIR=/tmp/gen18-profile-target cargo +1.85.1 test \
+            --manifest-path rust/gprolog-native/Cargo.toml \
+            --target "$TARGET" --features choicepoint-profile --all-targets
+      - name: Build frozen and candidate uninstrumented Rust-only engines
+        env:
+          ABI: ${{ matrix.abi }}
+          TARGET: ${{ matrix.target }}
+        run: |
+          set -euo pipefail
+          CARGO_TARGET_DIR=/tmp/gen17-target cargo +1.85.1 build \
+            --release --target "$TARGET" --manifest-path /tmp/gen17-frozen/Cargo.toml
+          CARGO_TARGET_DIR=/tmp/gen18-target cargo +1.85.1 build \
+            --release --target "$TARGET" --manifest-path Cargo.toml
+          for gen in 17 18; do
+            dir="/tmp/gen${gen}-target/$TARGET/release/deps"
+            shopt -s nullglob
+            libs=("$dir"/libgprolog_native-*.rlib)
+            if [ "${#libs[@]}" -ne 1 ]; then
+              echo "Expected one Rust library at $dir" >&2
+              exit 1
+            fi
+            linker=()
+            if [ "$ABI" = elf32 ]; then linker=(-C linker=/tmp/gcc-i686); fi
+            rustc +1.85.1 --edition=2021 -C opt-level=3 -C panic=abort \
+              --target "$TARGET" "${linker[@]}" \
+              -L "dependency=$dir" --extern "gprolog_native=${libs[0]}" \
+              tests/rust_choicepoint/bench_continuations.rs \
+              -o "/tmp/gen${gen}-stack-bench"
+            cp "/tmp/gen${gen}-target/$TARGET/release/gprolog-rs" "/tmp/gen${gen}-stack-cli"
+            if [ "$ABI" = elf32 ]; then
+              readelf -h "/tmp/gen${gen}-stack-bench" | grep "Class:.*ELF32"
+            else
+              readelf -h "/tmp/gen${gen}-stack-bench" | grep "Class:.*ELF64"
+            fi
+            if ldd "/tmp/gen${gen}-stack-bench" | grep -Ei 'libgprolog|libgprolog_float_decimal'; then
+              echo "unexpected C GNU Prolog runtime bridge" >&2
+              exit 1
+            fi
+          done
+      - name: Frozen 241-case full CLI differential and representation attacks
+        env:
+          ABI: ${{ matrix.abi }}
+        run: |
+          set -euo pipefail
+          python3 -m py_compile tests/rust_goal_stack/differential.py
+          python3 tests/rust_goal_stack/differential.py \
+            --baseline /tmp/gen17-stack-cli --candidate /tmp/gen18-stack-cli \
+            --abi "$ABI" --output "$PWD/stack-differential-$ABI.json"
+      - name: Matched 11-case uninstrumented solve-only A/B and negative controls
+        env:
+          ABI: ${{ matrix.abi }}
+        run: |
+          set -euo pipefail
+          python3 -m py_compile tests/rust_goal_stack/benchmark.py
+          python3 tests/rust_goal_stack/benchmark.py \
+            --baseline /tmp/gen17-stack-bench --candidate /tmp/gen18-stack-bench \
+            --abi "$ABI" --candidate-sha "$(git rev-parse HEAD)" \
+            --output "$PWD/stack-benchmark-$ABI.json"
+      - name: Probe actual Rust suffix reconstruction and choices
+        env:
+          TARGET: ${{ matrix.target }}
+          ABI: ${{ matrix.abi }}
+        run: |
+          set -euo pipefail
+          CARGO_TARGET_DIR=/tmp/gen18-profile-target cargo +1.85.1 build \
+            --release --manifest-path rust/gprolog-native/Cargo.toml \
+            --target "$TARGET" --features choicepoint-profile --bin choicepoint-probe
+          python3 tests/rust_choicepoint/profile.py \
+            --probe "/tmp/gen18-profile-target/$TARGET/release/choicepoint-probe" \
+            --abi "$ABI" --output "$PWD/stack-profile-$ABI.json"
+      - name: Preserve all raw observations even if a gate fails
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: rust-reversed-goal-stack-${{ matrix.abi }}
+          path: |
+            stack-differential-${{ matrix.abi }}.json
+            stack-benchmark-${{ matrix.abi }}.json
+            stack-profile-${{ matrix.abi }}.json
+            docs/RUST_NATIVE_REVERSED_GOAL_STACK_PROTOCOL.md
+          if-no-files-found: warn
+          retention-days: 30
