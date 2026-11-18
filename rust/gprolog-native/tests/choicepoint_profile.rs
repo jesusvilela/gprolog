@@ -108,3 +108,46 @@ fn failed_partial_head_unification_is_rolled_back() {
     assert_eq!(observed.binding_writes, 2);
     assert_eq!(observed.binding_undo_writes, 1);
 }
+
+#[test]
+fn shared_suffix_preserves_four_answers_and_unwraps_on_last_redo() {
+    let program = parse_program("p(a). p(b). q(X,Y):-p(X),p(Y).").unwrap();
+    let query = parse_query("q(X,Y).", program.next_var).unwrap();
+    clear_choicepoint_profile();
+    let answers = solve(&program, &query, Limits {
+        max_steps: 1000, max_solutions: 4,
+    }).unwrap();
+    let tuples: Vec<_> = answers.into_iter().map(|sol| (
+        sol.bindings[0].1.clone(), sol.bindings[1].1.clone()
+    )).collect();
+    assert_eq!(tuples, [
+        ("a".into(), "a".into()), ("a".into(), "b".into()),
+        ("b".into(), "a".into()), ("b".into(), "b".into()),
+    ]);
+    let p = read_choicepoint_profile();
+    assert_eq!(p.shared_continuation_anchors, 1);
+    assert_eq!(p.shared_continuation_handle_clones, 1);
+    // First p(X) succeeds while its alternative owns one Arc; the
+    // later redo can unwrap that final owner without a second Vec clone.
+    assert_eq!(p.shared_continuation_fallback_copies, 1);
+    assert_eq!(p.choicepoints_redone, 3);
+}
+
+#[test]
+fn cut_prunes_a_shared_suffix_choice_without_redo() {
+    let program = parse_program(
+        "choose(a). choose(b). p(X):-choose(X),!,true."
+    ).unwrap();
+    let query = parse_query("p(X).", program.next_var).unwrap();
+    clear_choicepoint_profile();
+    let answers = solve(&program, &query, Limits {
+        max_steps: 1000, max_solutions: 16,
+    }).unwrap();
+    assert_eq!(answers.len(), 1);
+    assert_eq!(answers[0].bindings[0].1, "a");
+    let p = read_choicepoint_profile();
+    assert_eq!(p.shared_continuation_anchors, 1);
+    assert_eq!(p.shared_continuation_handle_clones, 1);
+    assert_eq!(p.cut_choicepoints_pruned, 1);
+    assert_eq!(p.choicepoints_redone, 0);
+}
