@@ -333,7 +333,9 @@ pub fn solve(program: &Program, query: &Query, limits: Limits)
     // The immutable Program is rescanned once per distinct requested signature.
     let mut predicate_cache: HashMap<(String, usize), Vec<usize>> = HashMap::new();
     let mut alternatives: Vec<ChoicePoint> = Vec::new();
-    let mut active = Some(Work::Resume(query.goals.iter().cloned()
+    // Internal stacks store pending goals in reverse execution order.
+    // Popping the Vec tail removes only the next goal; no suffix rebuild.
+    let mut active = Some(Work::Resume(query.goals.iter().rev().cloned()
         .map(|term| PendingGoal { term, cut_barrier: 0 }).collect()));
     let mut solutions = Vec::new();
     let mut steps = 0;
@@ -364,17 +366,19 @@ pub fn solve(program: &Program, query: &Query, limits: Limits)
                 let fresh = fresh_clause(&program.clauses[clause_index], &mut next_var);
                 let mark = bindings.mark();
                 if unify(&goal, &fresh.head, &mut bindings, 0) {
-                    let mut goals: Vec<PendingGoal> = fresh.body.into_iter()
-                        .map(|term| PendingGoal { term, cut_barrier: invocation_barrier })
-                        .collect();
-                    goals.extend(continuation.into_owned());
+                    // Continuation already stores the caller suffix in
+                    // reverse order; push the clause body in reverse so
+                    // its first term executes before the caller suffix.
+                    let mut goals = continuation.into_owned();
+                    goals.extend(fresh.body.into_iter().rev()
+                        .map(|term| PendingGoal { term, cut_barrier: invocation_barrier }));
                     active = Some(Work::Resume(goals));
                 } else {
                     // A mismatched compound head may have bound a prefix.
                     bindings.undo_to(mark);
                 }
             }
-            Work::Resume(goals) => {
+            Work::Resume(mut goals) => {
                 #[cfg(feature = "choicepoint-profile")]
                 profile_update(|p| p.work_resume_tasks += 1);
                 if goals.is_empty() {
@@ -386,11 +390,10 @@ pub fn solve(program: &Program, query: &Query, limits: Limits)
                     // Redo via the nearest pending choicepoint.
                     continue;
                 }
-                let mut remaining = goals.into_iter();
-                let pending = remaining.next().expect("nonempty checked");
-                let rest: Vec<PendingGoal> = remaining.collect();
-                #[cfg(feature = "choicepoint-profile")]
-                profile_update(|p| p.resume_suffix_goals_materialized += rest.len() as u64);
+                // Vec::pop retains the entire remaining suffix in the
+                // same allocation; no into_iter().collect() occurs.
+                let pending = goals.pop().expect("nonempty checked");
+                let rest = goals;
                 let cut_barrier = pending.cut_barrier;
                 let goal_value = root(&pending.term, &bindings);
                 match &goal_value {
@@ -410,17 +413,15 @@ pub fn solve(program: &Program, query: &Query, limits: Limits)
                         continue;
                     }
                     Term::Struct(name, args) if name == "," && args.len() == 2 => {
-                        let mut next = Vec::with_capacity(rest.len() + 2);
-                        next.push(PendingGoal { term: args[0].clone(), cut_barrier });
+                        let mut next = rest;
                         next.push(PendingGoal { term: args[1].clone(), cut_barrier });
-                        next.extend(rest);
+                        next.push(PendingGoal { term: args[0].clone(), cut_barrier });
                         active = Some(Work::Resume(next));
                         continue;
                     }
                     Term::Struct(name, args) if name == ";" && args.len() == 2 => {
-                        let mut right = Vec::with_capacity(rest.len() + 1);
+                        let mut right = rest.clone();
                         right.push(PendingGoal { term: args[1].clone(), cut_barrier });
-                        right.extend(rest.iter().cloned());
                         alternatives.push(ChoicePoint {
                             trail_mark: bindings.mark(), next: Work::Resume(right),
                         });
@@ -430,9 +431,8 @@ pub fn solve(program: &Program, query: &Query, limits: Limits)
                             p.disjunction_rest_goals_cloned += rest.len() as u64;
                             p.maximum_pending_choices = p.maximum_pending_choices.max(alternatives.len());
                         });
-                        let mut left = Vec::with_capacity(rest.len() + 1);
+                        let mut left = rest;
                         left.push(PendingGoal { term: args[0].clone(), cut_barrier });
-                        left.extend(rest);
                         active = Some(Work::Resume(left));
                         continue;
                     }
