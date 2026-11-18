@@ -113,6 +113,28 @@ fn tokenize(source: &str) -> Result<Vec<Token>, SyntaxError> {
             while at < bytes.len() && bytes[at] != b'\n' { at += 1; }
             continue;
         }
+        if c == b'/' && bytes.get(at + 1) == Some(&b'*') {
+            // A block comment is lexical whitespace, including nested
+            // comments as supported by SWI-Prolog. Iterative traversal
+            // avoids recursion and cannot change goal/term parse state.
+            at += 2;
+            let mut depth = 1usize;
+            while depth != 0 && at + 1 < bytes.len() {
+                if bytes[at] == b'/' && bytes[at + 1] == b'*' {
+                    depth += 1;
+                    at += 2;
+                } else if bytes[at] == b'*' && bytes[at + 1] == b'/' {
+                    depth -= 1;
+                    at += 2;
+                } else {
+                    at += 1;
+                }
+            }
+            if depth != 0 {
+                return Err(SyntaxError::new(begin, "unterminated block comment"));
+            }
+            continue;
+        }
         let kind = match c {
             b'(' => { at += 1; Kind::LParen }
             b')' => { at += 1; Kind::RParen }
@@ -434,6 +456,42 @@ mod tests {
         assert_ne!(args[0], args[2]);
         let Term::Struct(_, ref same) = p.clauses[1].head else { panic!() };
         assert_eq!(same[0], same[1]);
+    }
+
+    #[test]
+    fn block_comments_are_lexical_whitespace_including_nested_and_pldoc() {
+        let plain = parse_program("p(a). q(b).").unwrap();
+        let commented = parse_program(
+            "/* header */p(a)./** <examples> ?- p(a). */\n\
+             /* outer /* nested % ignored */ outer */ q(b). /* trailing */"
+        ).unwrap();
+        assert_eq!(commented, plain);
+        let q = parse_query("p(X).", plain.next_var).unwrap();
+        let commented_q = parse_query(
+            "/* query */p(/* arg */X)/* suffix */.", plain.next_var
+        ).unwrap();
+        assert_eq!(q, commented_q);
+    }
+
+    #[test]
+    fn block_delimiters_inside_quoted_atoms_are_not_comments() {
+        let p = parse_program("path('/* literal */').").unwrap();
+        let Term::Struct(_, args) = &p.clauses[0].head else { panic!() };
+        assert_eq!(args[0], Term::Atom("/* literal */".into()));
+        let q = parse_query("path('/* literal */').", p.next_var).unwrap();
+        assert_eq!(q.goals[0], p.clauses[0].head);
+    }
+
+    #[test]
+    fn block_comments_reject_unterminated_and_preserve_slash_error() {
+        let e = parse_program("p(a). /* unterminated").unwrap_err();
+        assert_eq!(e.offset, 6);
+        assert_eq!(e.message, "unterminated block comment");
+        let e = parse_program("/* outer /* inner */ not closed").unwrap_err();
+        assert_eq!(e.offset, 0);
+        assert_eq!(e.message, "unterminated block comment");
+        let e = parse_program("p(a). /").unwrap_err();
+        assert!(e.message.contains("unsupported token byte 0x2f"));
     }
 
     #[test]
