@@ -1,0 +1,135 @@
+name: Gen22 read-only Valgrind attribution replay
+
+on:
+  push:
+    branches: ['audit/gen22-valgrind-callsite-attribution']
+    paths:
+      - 'tests/rust_external_profile/analyze_callsite.py'
+      - 'docs/RUST_GEN22_*'
+      - '.github/workflows/rust-gen22-attribution.yml'
+  pull_request:
+    paths:
+      - 'tests/rust_external_profile/analyze_callsite.py'
+      - 'docs/RUST_GEN22_*'
+      - '.github/workflows/rust-gen22-attribution.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  parser-contract:
+    name: Gen22 synthetic parser and immutable summary checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Validate unit known answers and negative tampering controls
+        run: |
+          set -euo pipefail
+          python3 -m py_compile tests/rust_external_profile/analyze_callsite.py
+          python3 tests/rust_external_profile/analyze_callsite.py --self-test
+      - name: Check signed reported totals and risk boundaries
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          d=json.loads(Path("docs/RUST_GEN22_ATTRIBUTION_RESULTS.json").read_text())
+          p=d["primary"]
+          b=p["signed_deltas"]
+          assert b=={"dhat_bytes":897128,"dhat_blocks":24384,"callgrind_Ir":11619544}
+          site=p["normalized_first_rust_frame_net_byte_deltas"]
+          blocks=p["normalized_first_rust_frame_net_block_deltas"]
+          funcs=p["predeclared_six_libc_function_Ir_delta"]
+          assert sum(site.values()) == b["dhat_bytes"]
+          assert sum(blocks.values()) == b["dhat_blocks"]
+          assert sum(funcs.values()) == 8579808
+          assert p["predefined_shares"]["six_libc_symbols_of_net_extra_callgrind_Ir"] == sum(funcs.values())/b["callgrind_Ir"]
+          assert d["result"]["independent_authored_replication"] is False
+          assert d["result"]["heldout_passed"] is True
+          for k in ("exploratory","heldout"):
+              assert len(d["provenance"][k]["archive_sha256"]) == 64
+          print("Gen22 static bounded evidence PASS")
+          PY
+
+  artifact-replay:
+    name: Gen22 replay original and held-out Valgrind raw instruments
+    if: github.event_name == 'pull_request' && github.head_ref == 'audit/gen22-valgrind-callsite-attribution'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Verify pull-request source tree
+        env:
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin "$PR_HEAD"
+          test "$(git rev-parse HEAD^{tree})" = "$(git rev-parse "${PR_HEAD}^{tree}")"
+      - name: Retrieve original Valgrind source artifact
+        uses: actions/download-artifact@v4
+        with:
+          artifact-ids: 14427545662
+          run-id: 44302879486
+          repository: jesusvilela/gprolog
+          github-token: ${{ github.token }}
+          path: /tmp/gen22-discovery
+      - name: Retrieve separate held-out CI run artifact
+        uses: actions/download-artifact@v4
+        with:
+          artifact-ids: 14427846479
+          run-id: 44305428250
+          repository: jesusvilela/gprolog
+          github-token: ${{ github.token }}
+          path: /tmp/gen22-heldout
+      - name: Replay all six cases with strict sum and representation checks
+        run: |
+          set -euo pipefail
+          cd /tmp/gen22-discovery
+          zip -q -r "$GITHUB_WORKSPACE/gen22-discovery.zip" .
+          cd /tmp/gen22-heldout
+          zip -q -r "$GITHUB_WORKSPACE/gen22-heldout.zip" .
+          cd "$GITHUB_WORKSPACE"
+          python3 tests/rust_external_profile/analyze_callsite.py \
+            --artifact gen22-discovery.zip --output gen22-discovery-analysis.json
+          python3 tests/rust_external_profile/analyze_callsite.py \
+            --artifact gen22-heldout.zip --validate-heldout \
+            --output gen22-heldout-analysis.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          snapshot=json.loads(Path("docs/RUST_GEN22_ATTRIBUTION_RESULTS.json").read_text())
+          a=json.loads(Path("gen22-discovery-analysis.json").read_text())
+          b=json.loads(Path("gen22-heldout-analysis.json").read_text())
+          for d in (a,b):
+              assert d["passed"] and len(d["cases"])==6
+              primary=d["cases"]["first_failure_r128"]
+              assert primary["deltas"]=={"heap_bytes":897128,"heap_blocks":24384,"Ir":11619544}
+              site=primary["signed_site_delta_bytes"]
+              assert site["gprolog_native::engine::solve"]==450088
+              assert site["<gprolog_native::syntax::Term as core::clone::Clone>::clone"]==447040
+          p=b["cases"]["first_failure_r128"]["predeclared_attribution_shares"]
+          assert p["two_symbol_dhat_bytes_share_of_net_delta"]>=.95
+          assert p["term_clone_dhat_blocks_share_of_net_delta"]>=.90
+          assert p["six_heap_function_Ir_share_of_net_delta"]>=.65
+          assert snapshot["result"]["heldout_passed"] is True
+          print("Gen22 original+heldout exact raw-to-symbol audit PASS")
+          PY
+      - name: Retain replayed signed reports even if a gate fails
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: gen22-callsite-replay
+          path: |
+            gen22-discovery-analysis.json
+            gen22-heldout-analysis.json
+            docs/RUST_GEN22_ATTRIBUTION_RESULTS.json
+            docs/RUST_GEN22_CALLSITE_PROTOCOL.md
+          retention-days: 30
+          if-no-files-found: warn
