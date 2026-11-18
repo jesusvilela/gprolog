@@ -1,0 +1,288 @@
+{
+  "task_id": "gprolog-gen27-seven-licensed-cross-project-prolog-sources-20261118",
+  "claim": {
+    "text": "Among seven pinned original SWI and Scryer Prolog programs, SWI 9.0.4 cleanly loads four originals, but merged Rust Gen26 accepts only the known likes.pl program; the three extra SWI-clean core test modules are Rust syntax-rejected and the three Scryer programs produce SWI ERROR diagnostics despite exit zero.",
+    "scope": "Seven purposively selected unmodified Prolog files from SWI-Prolog/swipl-devel@111385b9 and mthom/scryer-prolog@47f2c4e7; source hash, licensing, ELF64 SWI 9.0.4, Rust 1.85.1 merged Gen26 and Gen24 baseline, independent likes SWI 12-query oracle and historical 264-case Rust comparison.",
+    "status_before": "H",
+    "assumptions": [
+      "Pinned upstream Git blobs and source files with embedded rights notices are byte-identical to originals",
+      "SWI clean_load requires exit0, no stdout and no stderr, not only a successful process status",
+      "A true/0 CLI load probe does not establish arbitrary predicate semantics",
+      "The three SWI test modules have individual explicit BSD-2 redistribution rights; the wider SWI suite is mixed-license",
+      "Scryer root BSD-3 applies to selected examples without an unexamined third-party data dependency"
+    ],
+    "forbidden_promotions": [
+      "No statistically representative acceptance rate or general ISO/GNU/SWI conformance",
+      "No claim that Scryer programmes are semantically invalid because SWI 9.0.4 lacks dialect-specific libraries",
+      "No module/CLP feature implementation inferred from the first rejected slash byte",
+      "No hardware performance/cycle benchmark or Gen19 ownership optimization",
+      "No independent whole-study experimental authorship"
+    ]
+  },
+  "specification": {
+    "intended_object": "A complete seven-item source/licence identity census with raw typed Rust and SWI loader triplets and a nested independent 12-query positive semantic oracle.",
+    "invariants": [
+      "Exactly seven original .pl files and exactly three rights notices from frozen two upstream commits; no source preprocessing",
+      "All source Git SHA1 and SHA256 identifiers preserved with source bytes and origin",
+      "SWI reference stdout/stderr/exit classified separately, preserving ERROR-bearing zero exits",
+      "Frozen Gen24 and Gen26 Rust interpret identical original source with true. and identical max_solutions=1 and max_steps=100000",
+      "Original source likes.pl matches twelve fresh independent SWI ordered answers under Gen26 with fixed resource limits",
+      "264 previously supported full-output Rust CLI differential cases remain unchanged"
+    ],
+    "known_answer_cases": [
+      "SWI likes.pl externally authored public-domain positive",
+      "SWI core test_list.pl, test_unify.pl, test_bags.pl individual BSD-2 sources",
+      "Scryer root BSD-3 licence and original programme source identities",
+      "SWI process exit0 with ERROR output is not clean",
+      "An accepted Rust source must produce true. newline, exit0 and empty stderr",
+      "Negative Rust syntax classification needs exit2 with syntax at byte diagnostic"
+    ]
+  },
+  "implementation": {
+    "artifact": "tests/rust_cross_origin_corpus/census.py, test_census.py, validate_gen27.py, original upstream/ files, docs/RUST_GEN27_*, .github/workflows/rust-gen27-cross-project.yml",
+    "commit": "SWI upstream 111385b90852dade2b772d074cc55fefa20ee1a9; Scryer 47f2c4e7cf9232137e2d43c7190c5504eb1a0045; Rust Gen24 fb9e05acd87e3fe71052e83ef38f26b9c12701d3; Rust Gen26 dbaf3af2b417893fcb636f196507aaaab905c286",
+    "environment": "Ubuntu 24.04 native ELF64, pinned Rust 1.85.1 standalone CLI with choicepoint-profile disabled, live SWI-Prolog 9.0.4, Python 3 standard library",
+    "live_entrypoint": "gprolog-rs ORIGINAL.pl true. --max-solutions 1 --max-steps 100000, and swipl -q -f none -s ORIGINAL.pl -g true -t halt; frozen 12 SWI findall reference queries on unmodified likes.pl",
+    "representation": "Raw exit/stdout/stderr per source and engine with Git blob SHA and SHA256, licence category, optional ERROR/Warning counts, exact per-file classification and full original source files"
+  },
+  "metric": {
+    "name": "Typed complete seven-file SWI reference clean-load subset versus two Rust versions' exact original-source loading, plus 12 ordered semantic matches and 264 historical CLI cases",
+    "type": "typed_tuple",
+    "units": "seven original-source × three implementation loader state triples; 12 SWI-Prolog ordered answer vectors; 264 exact CLI parity flags; bytes and Git hashes",
+    "direction": "partial_order",
+    "raw_before_clipping": true,
+    "semantic_invariance_claimed": false,
+    "equivalence_attacks": [
+      "Original SWI and Scryer source bytes unchanged across Rust Gen24/Gen26 and SWI",
+      "SWI process exit0 with missing-library ERROR stderr versus clean zero-exit loader",
+      "One public-domain likes original accepted versus three BSD-2 SWI modules containing predicate indicators",
+      "External SWI 9.0.4 dialect-dependent Scryer library imports vs reference-clean module declarations"
+    ]
+  },
+  "tests": {
+    "black_box": [
+      "Seven original source-load process stdout/stderr/status triples under two Rust versions and SWI 9.0.4",
+      "12 frozen original-source independent SWI likes.pl ordered-query comparisons",
+      "264 strict historical Rust CLI full-output differential cases on native ELF64"
+    ],
+    "structural": [
+      "SHA1 Git blob identity and SHA256 of all seven original source programs and three licence notices",
+      "Each SWI test-module file includes its full BSD-2 source licence",
+      "Separate Scryer BSD-3 root and SWI mixed-test-suite COPYING retained without silent licence promotion",
+      "Recomputed raw process classification, error/warning flags, fixed command args and all source identities"
+    ],
+    "property_based": [
+      "not applicable: this is a fixed, intentionally heterogeneous seven-source cohort rather than a randomized population"
+    ],
+    "metamorphic": [
+      "Load exactly the same source under two frozen Rust variants and the SWI independent implementation",
+      "Reject SWI exit0 with either stderr or stdout as clean",
+      "Original likes data-independent programme behavior matches twelve SWI answers"
+    ],
+    "fuzzing": [
+      "No new fuzzing; inherited 264-case deterministic historical Rust regression controls, not independent fuzzing"
+    ],
+    "historical": [
+      "Gen25/Gen26 direct original likes.pl 12 SWI matches",
+      "Gen26 four-file public-domain SWI demo-directory census",
+      "264 historical strict Rust CLI output and status cases"
+    ]
+  },
+  "controls": {
+    "matched_baselines": [
+      "Frozen merged Gen26 Rust versus previously merged Gen24 Rust on same original files and fixed true. query",
+      "Independent SWI-Prolog 9.0.4 on same exact source files without normalization"
+    ],
+    "negative_controls": [
+      "Three extra SWI-clean test modules rejected by Rust",
+      "Three Scryer sources with independent SWI ERROR stderr but exit0, recorded as not clean",
+      "SWI diagnostic-bearing zero exit versus a truly clean zero-exit likes case",
+      "A syntax failure must include explicit byte-error evidence"
+    ],
+    "compute_parity": "Same pinned Rust release compiler, architecture, executable profile and input source across both Rust versions; SWI used only as a separate source loader/semantic reference, not for time metrics.",
+    "parameter_parity": "All source probes use identical original files, Rust max_solutions 1 and max_steps 100000; likes semantic SWI/Rust uses fixed max 32 solutions, max 100000 steps.",
+    "sampling_parity": "One complete seven-case curated fixed cohort with no random sample, no repeated statistical trial and no post-execution exclusion.",
+    "data_access_parity": "Same original file bytes, hashes, licence notices and pinned upstream versions provided to Rust/SWI; no source rewrites."
+  },
+  "preregistration": {
+    "prediction": "Known likes source remains accepted by Gen26 and produces 12 independent ordered answers. Additional files containing modules, CLP, DCG and libraries may be rejected by Rust or fail SWI loading; no exact new-source success count was predicted.",
+    "primary_metric": "Entire seven-row per-engine loader outcome vector, with SWI clean eligibility subset computed from raw status and source SHA before comparing Rust acceptance, plus fixed semantic/historical guards.",
+    "uncertainty_method": "Descriptive exact finite cohort with no inferential distribution; total seven denominator always visible; source origin and reference implementation independence disclosed by programme family.",
+    "kill_condition": "Any original file/licence/blob drift, source adjustment or exclusion, missing SWI version, mislabeled ERROR-bearing exit0, malformed raw tool output, twelve likes semantic mismatch or historical 264-case Rust regression.",
+    "stop_condition": "No new parser features, module rewrites, missing-library substitutions, benchmark sample changes or post-hoc count inflation in this audit.",
+    "promotion_rule": "M for exact seven-case source-loader observations and bounded twelve-case live SWI likes semantics after final-head CI, no broader language-compliance or performance claim."
+  },
+  "evidence": {
+    "primary_sources": [
+      "https://github.com/SWI-Prolog/swipl-devel/tree/111385b90852dade2b772d074cc55fefa20ee1a9",
+      "https://github.com/SWI-Prolog/swipl-devel/blob/111385b90852dade2b772d074cc55fefa20ee1a9/tests/COPYING",
+      "https://github.com/SWI-Prolog/swipl-devel/blob/111385b90852dade2b772d074cc55fefa20ee1a9/demo/README.md",
+      "https://github.com/mthom/scryer-prolog/tree/47f2c4e7cf9232137e2d43c7190c5504eb1a0045/src/examples",
+      "https://github.com/mthom/scryer-prolog/blob/47f2c4e7cf9232137e2d43c7190c5504eb1a0045/LICENSE"
+    ],
+    "execution_records": [
+      "First complete independently instrumented native run: https://github.com/jesusvilela/gprolog/actions/runs/44391070625",
+      "Raw seven-file, twelve-query and 264-case artifact: https://github.com/jesusvilela/gprolog/actions/runs/44391070625/artifacts/14467771741",
+      "Permanent seven-row typed summary: tests/rust_cross_origin_corpus/results/gen27_source_census.csv",
+      "Final-head rerun required once report, audit manifest and provenance validator are committed"
+    ],
+    "independent_witnesses": [
+      {
+        "name": "SWI-Prolog 9.0.4 source loader and original likes/2 semantic oracle",
+        "origin": "Independent runtime code from the Rust interpreter; SWI project also authored four of seven source files, Scryer is independently maintained. No independently authored whole-study audit.",
+        "artifact": "gen27-seven-originals.json and gen27-likes-original-swi.json in artifact 14467771741"
+      }
+    ],
+    "claim_to_artifact_map": [
+      "Seven original programme/license SHA identities -> frozen checked-in source files, individual source headers and seven-result raw SHA records",
+      "Four SWI-clean -> raw SWI exit/stdout/stderr triplets classified under fixed clean predicate",
+      "Three Rust-rejected SWI-clean modules -> raw Rust error offsets 1628/1678/1628 and source module-export predicate indicator",
+      "Three SWI error-bearing Scryer cases -> per-file raw ERROR/Warning lines, despite OS exit 0",
+      "12 SWI ordered likes answers -> full live original-source findall output and Rust CLI answers in gen27-likes-original-swi.json",
+      "264 strict historical Rust results -> gen27-historical-elf64.json",
+      "All seven source rows and source hashes -> permanent gen27_source_census.csv"
+    ]
+  },
+  "round_trip": {
+    "edges": [
+      {
+        "from": "cross-project source-compatibility requirement",
+        "to": "original-byte and explicit-license source specification",
+        "preserved": [
+          "exact seven-source cohort with licence provenance",
+          "raw exit/stdout/stderr and source SHA",
+          "typed independent reference domain"
+        ],
+        "transformed": [
+          "original byte source loaded in specific interpreter into a typed process outcome",
+          "reference clean cohort filtered with frozen exact predicate"
+        ],
+        "lost": [
+          "one-shot true. load does not prove every predicate's intended semantics",
+          "SWI 9.0.4 dialect libraries absent for Scryer sources"
+        ],
+        "remainder": [
+          "general Prolog conformance and future module support not established"
+        ]
+      },
+      {
+        "from": "original-byte and explicit-license source specification",
+        "to": "immutable Rust/SWI loader execution",
+        "preserved": [
+          "exact seven-source cohort with licence provenance",
+          "raw exit/stdout/stderr and source SHA",
+          "typed independent reference domain"
+        ],
+        "transformed": [
+          "original byte source loaded in specific interpreter into a typed process outcome",
+          "reference clean cohort filtered with frozen exact predicate"
+        ],
+        "lost": [
+          "one-shot true. load does not prove every predicate's intended semantics",
+          "SWI 9.0.4 dialect libraries absent for Scryer sources"
+        ],
+        "remainder": [
+          "general Prolog conformance and future module support not established"
+        ]
+      },
+      {
+        "from": "immutable Rust/SWI loader execution",
+        "to": "raw seven-file outcomes and independent likes oracle",
+        "preserved": [
+          "exact seven-source cohort with licence provenance",
+          "raw exit/stdout/stderr and source SHA",
+          "typed independent reference domain"
+        ],
+        "transformed": [
+          "original byte source loaded in specific interpreter into a typed process outcome",
+          "reference clean cohort filtered with frozen exact predicate"
+        ],
+        "lost": [
+          "one-shot true. load does not prove every predicate's intended semantics",
+          "SWI 9.0.4 dialect libraries absent for Scryer sources"
+        ],
+        "remainder": [
+          "general Prolog conformance and future module support not established"
+        ]
+      },
+      {
+        "from": "raw seven-file outcomes and independent likes oracle",
+        "to": "typed clean-subset and complete denominator computation",
+        "preserved": [
+          "exact seven-source cohort with licence provenance",
+          "raw exit/stdout/stderr and source SHA",
+          "typed independent reference domain"
+        ],
+        "transformed": [
+          "original byte source loaded in specific interpreter into a typed process outcome",
+          "reference clean cohort filtered with frozen exact predicate"
+        ],
+        "lost": [
+          "one-shot true. load does not prove every predicate's intended semantics",
+          "SWI 9.0.4 dialect libraries absent for Scryer sources"
+        ],
+        "remainder": [
+          "general Prolog conformance and future module support not established"
+        ]
+      },
+      {
+        "from": "typed clean-subset and complete denominator computation",
+        "to": "bounded research interpretation",
+        "preserved": [
+          "exact seven-source cohort with licence provenance",
+          "raw exit/stdout/stderr and source SHA",
+          "typed independent reference domain"
+        ],
+        "transformed": [
+          "original byte source loaded in specific interpreter into a typed process outcome",
+          "reference clean cohort filtered with frozen exact predicate"
+        ],
+        "lost": [
+          "one-shot true. load does not prove every predicate's intended semantics",
+          "SWI 9.0.4 dialect libraries absent for Scryer sources"
+        ],
+        "remainder": [
+          "general Prolog conformance and future module support not established"
+        ]
+      },
+      {
+        "from": "bounded research interpretation",
+        "to": "cross-project source-compatibility requirement",
+        "preserved": [
+          "exact seven-source cohort with licence provenance",
+          "raw exit/stdout/stderr and source SHA",
+          "typed independent reference domain"
+        ],
+        "transformed": [
+          "original byte source loaded in specific interpreter into a typed process outcome",
+          "reference clean cohort filtered with frozen exact predicate"
+        ],
+        "lost": [
+          "one-shot true. load does not prove every predicate's intended semantics",
+          "SWI 9.0.4 dialect libraries absent for Scryer sources"
+        ],
+        "remainder": [
+          "general Prolog conformance and future module support not established"
+        ]
+      }
+    ]
+  },
+  "result": {
+    "observed": "7/7 original source Git identities and licences validated; 4/7 cleanly load in SWI 9.0.4 (likes and 3 BSD-2 test modules), 3/7 Scryer sources exit0 with ERROR/Warning missing-library diagnostics and cannot serve as clean references. Gen24 Rust accepts 0/7, Gen26 accepts 1/7 (likes); among the four SWI-clean originals Rust accepts 1/4, rejects 3/4 at module-export slash. Original likes matches 12/12 SWI ordered queries; 264/264 historical Rust CLI cases pass.",
+    "effect_size": "Typed seven-row source-loader outcome vector: SWI-clean=4, Rust-accepted among clean=1, SWI-clean Rust-rejected=3, SWI-diagnostic=3. No population effect size or timing metric.",
+    "uncertainty": "Selected seven programmes from two upstream projects rather than complete/rand corpus; original modules may import plunit or libraries, SWI and SWI test sources share authorship, Scryer sources not independently clean in SWI 9.0.4, external semantic oracle applies only to likes.pl.",
+    "status_after": "M",
+    "retired_claims": [
+      "Any numerical seven-file acceptance fraction is a general Prolog ISO/GNU/SWI conformance rate",
+      "SWI process exit zero implies clean source loading, even with ERROR stderr",
+      "Scryer source not loadable in SWI 9.0.4 is a semantically invalid Prolog program",
+      "Accepting a predicate-indicator slash alone makes module-heavy source runnable"
+    ],
+    "active_remainder": [
+      "Module declarations and plunit directives remain unsupported in Rust as observed",
+      "Additional Scryer dialect libraries absent from chosen SWI reference",
+      "A future genuinely independent, SWI-clean original module needs its own module-namespace and query semantics protocol",
+      "No native performance or hardware-cycle evidence"
+    ]
+  }
+}
