@@ -26,9 +26,17 @@ fn ground_first_solution(target_facts: usize, repeated_goals: usize) {
     assert_eq!(observed.total_search_steps, (2 * repeated_goals + 1) as u64);
     assert_eq!(observed.resume_suffix_goals_materialized, suffix as u64);
     assert_eq!(observed.clause_choices_pushed, created as u64);
-    assert_eq!(observed.clause_continuation_vectors_cloned, created as u64);
-    assert_eq!(observed.clause_continuation_goals_cloned,
-               ((target_facts - 1) * suffix) as u64);
+    let shared_calls = if target_facts > 1 { repeated_goals - 1 } else { 0 };
+    let empty_choice_clones = if target_facts > 1 { target_facts - 1 } else { 0 };
+    assert_eq!(observed.shared_continuation_anchors, shared_calls as u64);
+    assert_eq!(observed.shared_continuation_handle_clones,
+               (shared_calls * (target_facts - 1)) as u64);
+    assert_eq!(observed.shared_continuation_fallback_copies, shared_calls as u64);
+    // The last goal's empty continuation stays an Owned(Vec); its
+    // copied vectors contain zero elements.
+    assert_eq!(observed.clause_continuation_vectors_cloned,
+               (shared_calls + empty_choice_clones) as u64);
+    assert_eq!(observed.clause_continuation_goals_cloned, suffix as u64);
     assert_eq!(observed.maximum_pending_choices, created);
     assert_eq!(observed.disjunction_choices_pushed, 0);
     assert_eq!(observed.disjunction_rest_goals_cloned, 0);
