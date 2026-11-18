@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Final-head bounded Gen27 source/provenance and live SWI-oracle validator."""
 from collections import Counter
+import csv
+import re
 import argparse
 import hashlib
 import json
@@ -66,6 +68,49 @@ def validate(census, oracle, history):
              if census["programs"][name]["rust_gen26"]["outcome"] == "accepted_and_true"]
     assert clean == census["clean_under_swi"]
     assert overlap == census["clean_and_accepted_under_rust"]
+    # This is a same-workload exact-source replay of a published, post-run
+    # seven-row snapshot. It is NOT an independently selected held-out set.
+    with Path("tests/rust_cross_origin_corpus/results/gen27_source_census.csv").open(
+        newline="", encoding="utf-8"
+    ) as fd:
+        rows = list(csv.DictReader(fd))
+    assert len(rows) == 7
+    assert {row["case"] for row in rows} == set(PROGRAMS)
+    for row in rows:
+        name = row["case"]
+        raw = census["programs"][name]
+        expected = source_meta[name]
+        for label, field in (
+            ("origin", "upstream_repo"),
+            ("upstream_commit", "upstream_commit"),
+            ("git_blob_sha1", "git_blob_sha1"),
+            ("sha256", "sha256"),
+            ("license", "license_class"),
+        ):
+            assert row[label] == expected[field], (name, label)
+        assert int(row["bytes"]) == expected["source_bytes"]
+        for version, status_key, byte_key in (
+            ("rust_gen24", "rust_gen24", "gen24_first_syntax_byte"),
+            ("rust_gen26", "rust_gen26", "gen26_first_syntax_byte"),
+        ):
+            record = raw[version]
+            assert row[status_key] == record["outcome"]
+            error = re.search(r"syntax at byte (\d+)", record["stderr"])
+            assert row[byte_key] == (error.group(1) if error else "")
+        ref = raw["SWI_reference"]
+        assert row["SWI_9_0_4"] == ref["outcome"]
+        assert int(row["SWI_exit"]) == ref["exit"]
+        assert int(row["SWI_error_lines"]) == sum(
+            line.lstrip().startswith("ERROR:")
+            for line in ref["stderr"].splitlines()
+        )
+        assert int(row["SWI_warning_lines"]) == sum(
+            line.lstrip().startswith("Warning:")
+            for line in ref["stderr"].splitlines()
+        )
+    assert census["SWI_version"].startswith("SWI-Prolog version 9.0.4"), (
+        "published CSV is version-bound and requires an explicit version correction"
+    )
     assert "swi_likes" in clean and "swi_likes" in overlap
     assert census["programs"]["swi_likes"]["rust_gen24"]["outcome"] == "syntax_rejection"
 
