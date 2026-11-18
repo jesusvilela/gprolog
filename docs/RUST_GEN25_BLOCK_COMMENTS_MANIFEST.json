@@ -1,0 +1,263 @@
+{
+  "task_id": "gprolog-gen25-nested-comments-unmodified-upstream-2026-11-18",
+  "claim": {
+    "text": "A parser-only nested /* */ comment branch allows a genuine untouched public-domain upstream Prolog program to execute directly in Rust and reproduce twelve live SWI ordered answers without changing 264 previously supported native CLI behaviors.",
+    "scope": "SWI-Prolog demo/likes.pl pinned to 111385b9; 12 queries tested with external SWI 9.0.4 ELF64; historical 264-case exact CLI parity and parser Rust tests on ELF64+i686; Rust 1.85.1.",
+    "status_before": "H",
+    "assumptions": [
+      "Source and license Git blobs match external upstream commit",
+      "Block delimiters have lexical-whitespace semantics outside quoted atoms",
+      "SWI-Prolog 9.0.4 is an independent executable witness on this subset",
+      "Two Rust build variants and historical source are frozen by SHA"
+    ],
+    "forbidden_promotions": [
+      "No general ISO/SWI Prolog compatibility",
+      "No new performance gain or time attribution",
+      "No independent experimental authorship",
+      "No retired Gen19 continuation policy revival"
+    ]
+  },
+  "specification": {
+    "intended_object": "Add support for byte-oriented nested /* */ comment skipping to the existing finite Horn-clause Rust lexer, without changing parsers for ordinary terms or execution semantics.",
+    "invariants": [
+      "Original 922-byte upstream source accepted directly, with source hashes preserved",
+      "Fixed 12 SWI reference ordered outputs matched by new Rust on original",
+      "Nested, Pldoc and ordinary blocks supported; unterminated block rejected at opening position",
+      "Quoted atoms containing literal /* */ preserved, bare slash remains unsupported",
+      "264 previously accepted Rust CLI cases exact output/exit/stderr parity on ELF64+i686"
+    ],
+    "known_answer_cases": [
+      "12 documented and observed original likes.pl queries",
+      "One outer block and nested block parsing",
+      "Original Gen18 rejects block comment at byte 440",
+      "Unclosed nested comment has exact error at first slash"
+    ]
+  },
+  "implementation": {
+    "artifact": "rust/gprolog-native/src/syntax.rs; tests/rust_block_comments/verify_original.py; tests/rust_block_comments/validate_gen25.py; .github/workflows/rust-gen25-block-comments.yml",
+    "commit": "Generation 25 parser-only branch based on merged Generation 24 fb9e05acd87e3fe71052e83ef38f26b9c12701d3; immutable released Gen18 901c8b58c12fbe8b79f70b0118f951f3ed2fcf21",
+    "environment": "Rust 1.85.1 release native ELF64 and i686 ELF32 with feature tests; SWI-Prolog 9.0.4 ELF64; Python 3 standard library",
+    "live_entrypoint": "syntax::tokenize after '%' comments before ordinary tokens, followed by parse_program/query/solve; original source in new CLI and SWI; derivative controls",
+    "representation": "Depth-counting iterative lexer on bytes; exact CLI stdout/stderr/exit and ordered atom bindings"
+  },
+  "metric": {
+    "name": "Typed original-source compatibility, ordered SWI semantic concordance and historical Rust differential",
+    "type": "typed_tuple",
+    "units": "12 exact ordered cases; 264 exact historical cases per ABI; raw file hashes; parser error positions",
+    "direction": "partial_order",
+    "raw_before_clipping": true,
+    "semantic_invariance_claimed": false,
+    "equivalence_attacks": [
+      "Original file vs documentation-comment-normalized variant",
+      "Nested comment vs ordinary/Pldoc block",
+      "Quoted atom containing comment markers",
+      "Unterminated nested comment versus syntactically valid block",
+      "Untouched existing programs before/after lexer patch"
+    ]
+  },
+  "tests": {
+    "black_box": [
+      "12 SWI reference/patch Rust full-output concordance on untouched original",
+      "Original Gen18 rejection plus normalized Gen18 and patched Rust comparison",
+      "264 historical Rust CLI comparisons per ABI"
+    ],
+    "structural": [
+      "Three unit tests for block/nested/Pldoc, quoted atoms, malformed and unsupported slash",
+      "Pinned upstream Git SHA source identity",
+      "Original parser source review and feature-gated Rust test suite"
+    ],
+    "property_based": [
+      "not applicable: exact finite source compatibility test, no new random generator"
+    ],
+    "metamorphic": [
+      "Comment insertions leave Rust Program and Query identical",
+      "Original new Rust vs normalized new Rust",
+      "Previous Gen18 normalized vs new Rust original"
+    ],
+    "fuzzing": [
+      "not applicable: existing historical deterministic case generators only"
+    ],
+    "historical": [
+      "Gen24 12-query SWI semantic witness after comment normalization",
+      "Gen18 264 strict full-output historical Rust cases on both ABIs"
+    ]
+  },
+  "controls": {
+    "matched_baselines": [
+      "Released Gen18 unchanged Rust implementation on original/normalized source",
+      "Live independent SWI-Prolog 9.0.4 on same original source"
+    ],
+    "negative_controls": [
+      "Gen18 old parser rejection at byte 440",
+      "Quoted /* marker inside atom",
+      "Missing closing nested block and bare slash remain invalid",
+      "264 formerly supported source/query corpus"
+    ],
+    "compute_parity": "Same Rust 1.85.1 compiler, release flags and targets within Rust pair; SWI oracle not timed or performance compared.",
+    "parameter_parity": "Same original source and query bytes; fixed max 32 solutions and 100000 steps in candidate and Gen18 normalized controls.",
+    "sampling_parity": "One deterministic SWI execution and each Rust control per query; not a population estimate.",
+    "data_access_parity": "Original SHA256 8f83ce..., pinned 922 bytes and license notice, SWI/new Rust directly; Gen18 only receives disclosed normalized derivative."
+  },
+  "preregistration": {
+    "prediction": "New Rust accepts original likes.pl and returns all 12 SWI ordered outputs, while Gen18 rejects original, comment-only controls match, unit negatives remain rejected and 264 supported cases have exact parity per ABI.",
+    "primary_metric": "Typed tuple of 12 source-original independent SWI concordance and unchanged 264 strict historical cases per ABI, no timing.",
+    "uncertainty_method": "Deterministic finite case set, two native ABIs for historical regressions and ELF64 live SWI; external implementation witness but not independently authored study or statistical interval.",
+    "kill_condition": "Any original source hash mismatch, SWI vs new Rust mismatch, swallowed quoted comment, missing nested close accepted, unsupported slash accepted, historical output drift, or unavailable reference.",
+    "stop_condition": "No WAM, GC, source rewriting, unification changes or ownership heuristic to rescue a parser-only failure.",
+    "promotion_rule": "M only for direct upstream source acceptance and bounded SWI/264-case parity after final exact-head checks; broader language claims stay H."
+  },
+  "evidence": {
+    "primary_sources": [
+      "https://www.swi-prolog.org/pldoc/man?section=nestedcomments",
+      "https://github.com/SWI-Prolog/swipl-devel/blob/111385b90852dade2b772d074cc55fefa20ee1a9/demo/likes.pl",
+      "https://github.com/SWI-Prolog/swipl-devel/blob/111385b90852dade2b772d074cc55fefa20ee1a9/demo/README.md"
+    ],
+    "execution_records": [
+      "https://github.com/jesusvilela/gprolog/actions/runs/44370400905",
+      "ELF64 artifact 14457284534 with 12 direct SWI + 264 parity",
+      "i686 artifact 14457414222 with 264 parity"
+    ],
+    "independent_witnesses": [
+      {
+        "name": "SWI-Prolog 9.0.4 original-source semantic evaluator",
+        "origin": "externally developed interpreter distinct from project Rust parser and fixture authorship",
+        "artifact": "gen25-unmodified-swi-elf64.json in raw Actions artifact 14457284534"
+      }
+    ],
+    "claim_to_artifact_map": [
+      "Original file now parses -> 12 candidate_unmodified_original CLI result objects",
+      "Independent semantic meaning -> SWI canonical ordered findall results per query",
+      "Representation control -> candidate_comment_normalized and gen18_comment_normalized outputs",
+      "Original source immutable -> upstream Git blob and raw SHA256",
+      "Lexer backward compatibility -> 264 strict existing cases on both ABIs",
+      "Malformed-comment behavior -> syntax.rs block-comment unit tests"
+    ]
+  },
+  "round_trip": {
+    "edges": [
+      {
+        "from": "source-based requirement",
+        "to": "scoped nested-comment lexer semantics",
+        "preserved": [
+          "exact original source and its public-domain license",
+          "ordered semantic references",
+          "no unification/ownership changes"
+        ],
+        "transformed": [
+          "previously rejected comment syntax becomes lexical whitespace"
+        ],
+        "lost": [
+          "general Prolog syntax/semantic guarantee not established"
+        ],
+        "remainder": [
+          "other upstream source compatibility and cross-implementation evaluation remain"
+        ]
+      },
+      {
+        "from": "scoped nested-comment lexer semantics",
+        "to": "patched tokenizer representation",
+        "preserved": [
+          "exact original source and its public-domain license",
+          "ordered semantic references",
+          "no unification/ownership changes"
+        ],
+        "transformed": [
+          "previously rejected comment syntax becomes lexical whitespace"
+        ],
+        "lost": [
+          "general Prolog syntax/semantic guarantee not established"
+        ],
+        "remainder": [
+          "other upstream source compatibility and cross-implementation evaluation remain"
+        ]
+      },
+      {
+        "from": "patched tokenizer representation",
+        "to": "Rust default/feature tests and direct upstream SWI oracle",
+        "preserved": [
+          "exact original source and its public-domain license",
+          "ordered semantic references",
+          "no unification/ownership changes"
+        ],
+        "transformed": [
+          "previously rejected comment syntax becomes lexical whitespace"
+        ],
+        "lost": [
+          "general Prolog syntax/semantic guarantee not established"
+        ],
+        "remainder": [
+          "other upstream source compatibility and cross-implementation evaluation remain"
+        ]
+      },
+      {
+        "from": "Rust default/feature tests and direct upstream SWI oracle",
+        "to": "exact output and source-hash evidence",
+        "preserved": [
+          "exact original source and its public-domain license",
+          "ordered semantic references",
+          "no unification/ownership changes"
+        ],
+        "transformed": [
+          "previously rejected comment syntax becomes lexical whitespace"
+        ],
+        "lost": [
+          "general Prolog syntax/semantic guarantee not established"
+        ],
+        "remainder": [
+          "other upstream source compatibility and cross-implementation evaluation remain"
+        ]
+      },
+      {
+        "from": "exact output and source-hash evidence",
+        "to": "bounded compatibility interpretation",
+        "preserved": [
+          "exact original source and its public-domain license",
+          "ordered semantic references",
+          "no unification/ownership changes"
+        ],
+        "transformed": [
+          "previously rejected comment syntax becomes lexical whitespace"
+        ],
+        "lost": [
+          "general Prolog syntax/semantic guarantee not established"
+        ],
+        "remainder": [
+          "other upstream source compatibility and cross-implementation evaluation remain"
+        ]
+      },
+      {
+        "from": "bounded compatibility interpretation",
+        "to": "source-based requirement",
+        "preserved": [
+          "exact original source and its public-domain license",
+          "ordered semantic references",
+          "no unification/ownership changes"
+        ],
+        "transformed": [
+          "previously rejected comment syntax becomes lexical whitespace"
+        ],
+        "lost": [
+          "general Prolog syntax/semantic guarantee not established"
+        ],
+        "remainder": [
+          "other upstream source compatibility and cross-implementation evaluation remain"
+        ]
+      }
+    ]
+  },
+  "result": {
+    "observed": "First Gen25 dual-ABI run passed: 12/12 direct unmodified upstream SWI ordered answers matched on ELF64, patched original equals patched and Gen18 comment-normalized controls; 264/264 previously supported strict Rust CLI outputs matched on ELF64 and i686; default/feature Rust unit tests passed. The initial YAML failure was syntax-only and corrected.",
+    "effect_size": "12/12 external ordered-query concordance; 264/264 historical differential per ABI; previous unmodified source parse failure at byte 440 now accepted by patched Rust; no timing metric.",
+    "uncertainty": "One public-domain teaching program and 12 project-selected queries, independent SWI implementation only on ELF64, no human external review or full ISO/Unicode test coverage.",
+    "status_after": "M",
+    "retired_claims": [
+      "Any claim the original likes.pl remained unsupported after the scoped lexer feature",
+      "Treating the old Gen19 eager-owned policy as repaired by unrelated parser work"
+    ],
+    "active_remainder": [
+      "Unmodified upstream programs with other syntax categories",
+      "Broader nested-comment lexical fuzzing and differential reference testing",
+      "Independent experimental reproduction of general Prolog correctness"
+    ]
+  }
+}
